@@ -8,7 +8,7 @@ import {
   Leaf, Trees, TreePine, Flower, Flower2, Bug, Bird, Rabbit, Snail, Turtle, Fish, Mountain, MountainSnow, Waves, CloudRain, CloudLightning, Wind, Sprout, Feather, Clover, Rat, Worm, Apple, Cherry,
   Laptop, Smartphone, Gamepad2, Headphones, Camera, Watch, Keyboard, Mouse, Tv, Speaker, HardDrive, Printer, Battery, Plug, Cpu, Wifi, Bluetooth, Radio, Calculator, Lightbulb, Monitor, Tablet, Mic, Webcam,
   Coffee, Book, Pencil, Scissors, Ticket, Gift, Plane, Car, Bus, Train, Bike, Compass, Map, Briefcase, ShoppingCart, CreditCard, Glasses, Key, Lock, Mail, Phone, Video,
-  ChevronDown, Instagram, Linkedin
+  ChevronDown, Instagram, Linkedin, Code2, FolderGit2, PlaneTakeoff, Link2
 } from 'lucide-react';
 
 const DIFFICULTIES = {
@@ -500,9 +500,139 @@ export default function App() {
 
       {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title" style={{ textAlign: 'center', margin: '40px 0 20px' }}><span className="local-badge" style={{ display: 'inline-block', marginBottom: '16px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Sparkles size={14} /> COMING SOON</span><h1 style={{ marginBottom: '12px' }}>Online Multiplayer</h1><p style={{ maxWidth: '400px', margin: '0 auto', fontSize: '15px' }}>Play MindFlip with friends, wherever they are.</p></div><div className="settings-card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Globe2 size={32} /></div><p style={{ color: 'var(--muted)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '400px', margin: '0 auto' }}>We're working on online multiplayer, including private rooms, friend invitations, and real-time matches. Stay tuned for updates.</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', textAlign: 'left', marginBottom: '32px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Lock size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Private Rooms</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Users size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Invite Friends</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Zap size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Real-Time Matches</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Trophy size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Online Leaderboards</span></div></div><button className="btn primary" onClick={() => nav('home')} style={{ padding: '0 32px' }}>Back to Home</button></div></section>}
       {page === 'how_to_play' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">LEARN THE RULES</span><h1>How to Play MindFlip</h1><p>Train your memory, sharpen your focus, and make every move count.</p></div><div className="section-block"><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Info size={14} /></span><div><h3>Game Basics</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Cards are placed face down.</li><li>Select two cards to reveal them.</li><li>If they match, they remain matched.</li><li>If they do not match, they are turned face down again.</li><li>Remember card positions to find matching pairs.</li><li>Complete all pairs before the timer runs out.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><UserRound size={14} /></span><div><h3>Game Modes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Solo:</strong> Play alone and challenge your memory.</li><li><strong>Local Multiplayer:</strong> Play with 2–4 players on the same device.</li><li><strong>Online Multiplayer:</strong> (Coming Soon)</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Zap size={14} /></span><div><h3>Difficulty Levels</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Easy:</strong> 4 × 3 grid, 12 cards, 6 pairs, 1.5 minutes.</li><li><strong>Normal:</strong> 4 × 4 grid, 16 cards, 8 pairs, 2 minutes.</li><li><strong>Medium:</strong> 6 × 4 grid, 24 cards, 12 pairs, 3 minutes.</li><li><strong>Hard:</strong> 6 × 6 grid, 36 cards, 18 pairs, 4 minutes.</li><li><strong>Extreme:</strong> 8 × 6 grid, 48 cards, 24 pairs, 5 minutes.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Sparkles size={14} /></span><div><h3>Card Themes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Random:</strong> Selects one theme for the current match.</li><li><strong>Symbols</strong></li><li><strong>Nature</strong></li><li><strong>Tech</strong></li><li><strong>Everyday</strong></li></ul><p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Random chooses a theme for the match and does not change the theme between cards during that match.</p></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Target size={14} /></span><div><h3>Scoring and Accuracy</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>A move represents one completed attempt involving two cards.</li><li>Points are awarded for pairs, with faster completion and fewer moves yielding a higher score.</li><li><strong>Accuracy:</strong> successful matching attempts divided by total completed attempts, multiplied by 100.</li><li>If no attempts have been completed, accuracy is 0%.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Users size={14} /></span><div><h3>Local Multiplayer Rules</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Each player has their own score and statistics.</li><li>A correct match keeps the turn with the current player (if configured).</li><li>A mismatch passes the turn to the next player.</li><li>The game ends when all pairs are matched or the overall timer runs out.</li></ul></div><div className="setup-panel" style={{ gridColumn: '1 / -1' }}><div className="panel-heading"><span className="step-number"><Star size={14} /></span><div><h3>Tips for Better Results</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Pay attention to card positions.</li><li>Start with the easiest difficulty if you are new.</li><li>Avoid random guessing.</li><li>Improve your accuracy by remembering previously revealed cards.</li></ul><div style={{ display: 'flex', gap: '12px', marginTop: '24px', flexWrap: 'wrap' }}><button className="btn primary" onClick={() => { setMode('solo'); nav('setup'); }}>Play Solo <ChevronRight size={17} /></button><button className="btn secondary" onClick={() => { setMode('local'); nav('setup'); }}><Users size={17} /> Play Together</button></div></div></div></div></section>}
-      {page === 'about_developer' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">ABOUT THE DEVELOPER</span><h1>Built by JB Devs</h1></div><div className="section-block" style={{ marginTop: '24px' }}><div className="setup-panel" style={{ textAlign: 'center', padding: '40px 24px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={32} /></div><p style={{ fontSize: '15px', color: 'var(--muted)', maxWidth: '500px', margin: '0 auto 32px', lineHeight: '1.6' }}>MindFlip is a memory-card game project built to provide a simple, enjoyable way to challenge memory and concentration.</p><div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '32px' }}><a href="https://jithu-portfolio-alpha.vercel.app/" target="_blank" rel="noreferrer" className="btn secondary" aria-label="Portfolio"><Briefcase size={16} /> Portfolio</a><a href="https://www.linkedin.com/in/jithu-biju-/" target="_blank" rel="noreferrer" className="btn secondary" aria-label="LinkedIn"><Linkedin size={16} /> LinkedIn</a><a href="https://www.instagram.com/j.i.t.h.u_/" target="_blank" rel="noreferrer" className="btn secondary" aria-label="Instagram"><Instagram size={16} /> Instagram</a></div><div style={{ borderTop: '1px solid var(--line)', paddingTop: '24px' }}><p style={{ fontSize: '11px', color: 'var(--muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Full-Stack Web Developer</p></div></div></div></section>}
+      {page === 'about_developer' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">ABOUT THE DEVELOPER</span><h1>Built by JB Devs</h1></div>
+        <div className="about-sections" style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
+          
+          <div className="section-block about-card profile-intro-card">
+            <div className="profile-header">
+              <div className="profile-photo-container">
+                <img src="/images/developer-profile.jpg" alt="Developer profile photo" className="profile-photo" onError={(e) => { e.currentTarget.style.display = 'none'; const placeholder = e.currentTarget.nextElementSibling; if (placeholder) placeholder.style.display = 'flex'; }} />
+                <div className="mode-icon peach profile-photo-placeholder" style={{ display: 'none', margin: 0, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: 'inherit' }}>
+                  <User size={32} />
+                </div>
+              </div>
+              <div className="profile-content">
+                <h2 style={{ margin: 0, fontSize: '22px', letterSpacing: '-0.5px' }}>Hi, I'm Jithu Biju</h2>
+                <span className="local-badge" style={{ marginTop: '6px', display: 'inline-block', marginBottom: '16px' }}>BCA Graduate (2026)</span>
+                <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
+                  Hi, I'm a BCA graduate with a strong interest in web development and building practical digital experiences. I enjoy turning ideas into functional, user-friendly websites and applications while continuously improving my development skills.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="section-block about-card">
+            <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Code2 size={18} style={{ color: 'var(--accent)' }}/> What I Do</h3>
+            <ul style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: '1.6', paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <li>Building responsive and user-friendly web interfaces.</li>
+              <li>Developing interactive applications using JavaScript and React.</li>
+              <li>Learning and building full-stack applications using the MERN stack.</li>
+              <li>Working with backend technologies, APIs, and databases.</li>
+              <li>Improving usability, functionality, and overall user experience.</li>
+            </ul>
+          </div>
+
+          <div className="section-block about-card">
+            <h3 style={{ marginBottom: '20px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={18} style={{ color: 'var(--accent)' }}/> Technologies I Work With</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+              <div>
+                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Frontend</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <span className="tech-badge mern-badge">React</span>
+                  <span className="tech-badge">JavaScript</span>
+                  <span className="tech-badge">HTML</span>
+                  <span className="tech-badge">CSS</span>
+                </div>
+              </div>
+              
+              <div>
+                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Backend</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <span className="tech-badge mern-badge">Node.js</span>
+                  <span className="tech-badge mern-badge">Express.js</span>
+                  <span className="tech-badge">Python</span>
+                  <span className="tech-badge">Django</span>
+                  <span className="tech-badge">PHP</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Databases</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <span className="tech-badge mern-badge">MongoDB</span>
+                  <span className="tech-badge">MySQL</span>
+                  <span className="tech-badge">SQLite</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Tools</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <span className="tech-badge">Git</span>
+                  <span className="tech-badge">GitHub</span>
+                  <span className="tech-badge">VS Code</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+
+          <div className="section-block about-card">
+            <h3 style={{ marginBottom: '12px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Brain size={18} style={{ color: 'var(--accent)' }}/> Why MindFlip?</h3>
+            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: '0 0 12px 0' }}>
+              MindFlip is a memory-card game project built to make improving memory and concentration enjoyable. It brings together interactive gameplay, multiple difficulty levels, card themes, solo challenges, and local multiplayer in one experience.
+            </p>
+            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
+              This project is part of my ongoing journey in building interactive web applications.
+            </p>
+          </div>
+
+          <div className="section-block about-card">
+            <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Link2 size={18} style={{ color: 'var(--accent)' }}/> Connect With Me</h3>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <a href="https://jithu-portfolio-alpha.vercel.app/" target="_blank" rel="noreferrer" className="btn secondary"><Briefcase size={16} /> Portfolio</a>
+              <a href="https://www.linkedin.com/in/jithu-biju-/" target="_blank" rel="noreferrer" className="btn secondary"><Linkedin size={16} /> LinkedIn</a>
+              <a href="https://www.instagram.com/j.i.t.h.u_/" target="_blank" rel="noreferrer" className="btn secondary"><Instagram size={16} /> Instagram</a>
+            </div>
+          </div>
+        </div>
+      </section>}
     </main>
-    {!isGameplayActive && <footer className="footer"><div className="footer-brand"><span className="brand-mark small"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>mindflip</strong><small>by JB Devs</small></span></div><span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>v1.0.0</span><span>Made for curious minds.</span><button className="footer-help" onClick={() => setShowHelp(true)}><Info size={14} /> How to play</button></footer>}
+    {!isGameplayActive && <footer className="footer-new">
+      <div className="footer-content">
+        <div className="footer-brand-area">
+          <div className="footer-brand" style={{ marginBottom: '12px' }}>
+            <span className="brand-mark small"><img src="/logo.png" alt="MindFlip logo" /></span>
+            <span><strong>mindflip</strong></span>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: '1.5', maxWidth: '250px', margin: 0 }}>
+            Flip cards, match pairs, and challenge your memory.
+          </p>
+        </div>
+        <div className="footer-links-area">
+          <strong>Quick Links</strong>
+          <div className="footer-links">
+            <button className="footer-link" onClick={() => nav('home')}>Home</button>
+            <button className="footer-link" onClick={() => nav('leaderboard')}>Leaderboard</button>
+            <button className="footer-link" onClick={() => nav('history')}>History</button>
+            <button className="footer-link" onClick={() => nav('about_developer')}>About Developer</button>
+          </div>
+        </div>
+        <div className="footer-social-area">
+          <strong>Connect</strong>
+          <div className="footer-socials">
+            <a href="https://jithu-portfolio-alpha.vercel.app/" target="_blank" rel="noreferrer" aria-label="Portfolio" className="footer-social-link"><Briefcase size={18} /></a>
+            <a href="https://www.linkedin.com/in/jithu-biju-/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="footer-social-link"><Linkedin size={18} /></a>
+            <a href="https://www.instagram.com/j.i.t.h.u_/" target="_blank" rel="noreferrer" aria-label="Instagram" className="footer-social-link"><Instagram size={18} /></a>
+          </div>
+        </div>
+      </div>
+      <div className="footer-bottom">
+        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>© {new Date().getFullYear()} JB Devs. All rights reserved.</span>
+        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.0.0</span>
+      </div>
+    </footer>}
     {notice && <div className="toast" role="status"><Check size={16} />{notice}</div>}
     {showHelp && <div className="modal-backdrop" onClick={() => setShowHelp(false)}><section className="help-modal" onClick={(e) => e.stopPropagation()}><button className="modal-close" onClick={() => setShowHelp(false)} aria-label="Close help"><X size={18} /></button><span className="mode-icon lavender"><Brain size={22} /></span><h2>How to play</h2><p>Flip two cards and look for matching symbols. In solo mode, try to finish with fewer moves. In local multiplayer, collect the most pairs to win.</p><div className="help-rule"><span>01</span><p><strong>Flip</strong><br />Choose any two hidden cards.</p></div><div className="help-rule"><span>02</span><p><strong>Match</strong><br />Matching pairs stay face up and score a point in multiplayer.</p></div><div className="help-rule"><span>03</span><p><strong>Remember</strong><br />If the cards don't match, they turn back over. Use what you saw next turn.</p></div><button className="btn primary full-btn" onClick={() => setShowHelp(false)}>Got it</button></section></div>}
   </div>;
