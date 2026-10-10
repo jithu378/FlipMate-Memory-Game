@@ -251,6 +251,60 @@ button:disabled {
     color: var(--accent)
 }
 
+.nav-dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 190px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+}
+
+.dark .dropdown-menu {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-item {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    width: 100%;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+@media (max-width: 580px) {
+    .dropdown-menu {
+        left: auto;
+        right: -20px;
+        transform: none;
+    }
+}
+
 .hero-copy>p,
 .page-title>p,
 .game-heading>div>p {
