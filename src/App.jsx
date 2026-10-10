@@ -58,6 +58,7 @@ export default function App() {
   const [roomCode, setRoomCode] = useState('');
   const [roomCreated, setRoomCreated] = useState(false);
   const [customName, setCustomName] = useState(persisted.displayName || 'Player');
+  const [leaderboardFilter, setLeaderboardFilter] = useState(difficulty);
   const [showHelp, setShowHelp] = useState(false);
   const startAt = useRef(null);
   const activeGameId = useRef(null);
@@ -69,7 +70,7 @@ export default function App() {
   const currentName = playerNames[activePlayer] || `Player ${activePlayer + 1}`;
   const totalPairs = settings.pairs;
   const complete = matched.length === deck.length && deck.length > 0;
-  const accuracy = moves ? Math.round((matched.length / 2 / moves) * 100) : 100;
+  const accuracy = moves ? Math.round((matched.length / 2 / moves) * 100) : 0;
   const isGameplayActive = page === 'game' && (gameStatus === 'playing' || gameStatus === 'paused');
 
   useEffect(() => { saveStore({ ...persisted, dark, sound, displayName: customName }); }, [persisted, dark, sound, customName]);
@@ -103,7 +104,7 @@ export default function App() {
     setRunning(false); setPaused(false); setGameStatus(timedOut ? 'timeout' : 'complete');
     const current = readStore();
     const result = { id: gameId, mode, difficulty, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : (customName || 'Player') };
-    const history = [result, ...(current.history || [])].slice(0, 50);
+    const history = [result, ...(current.history || []).filter(r => r.id !== gameId)].slice(0, 50);
     const bestKey = `${mode}-${difficulty}`;
     const bests = { ...(current.bests || {}) };
     if (!bests[bestKey] || result.score > bests[bestKey].score) bests[bestKey] = result;
@@ -150,7 +151,26 @@ export default function App() {
   const resetGame = () => { setRunning(false); setPaused(false); setGameStatus('ready'); setPage('setup'); setDeck([]); setFlipped([]); setMatched([]); };
   const copyRoom = async () => { try { await navigator.clipboard.writeText(roomCode); toast('Room code copied.'); } catch { toast(`Share this code: ${roomCode}`); } };
   const createRoom = () => { const code = Math.random().toString(36).slice(2, 8).toUpperCase(); setRoomCode(code); setRoomCreated(true); toast('Demo room created locally. Online sync needs Supabase setup.'); };
-  const localLeaderboard = useMemo(() => [...(persisted.history || [])].sort((a, b) => b.score - a.score).slice(0, 10), [persisted.history]);
+  const localLeaderboard = useMemo(() => {
+    const seenIds = new Set();
+    let list = [...(persisted.history || [])].filter(r => {
+      if (!r.id) return true;
+      if (seenIds.has(r.id)) return false;
+      seenIds.add(r.id);
+      return true;
+    });
+    if (leaderboardFilter && leaderboardFilter !== 'All') {
+      list = list.filter((r) => r.difficulty === leaderboardFilter);
+    }
+    return list.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const accA = a.moves ? Math.round((a.completedPairs / a.moves) * 100) : 0;
+      const accB = b.moves ? Math.round((b.completedPairs / b.moves) * 100) : 0;
+      if (accA !== accB) return accB - accA;
+      if (a.moves !== b.moves) return (a.moves || Infinity) - (b.moves || Infinity);
+      return (a.seconds || Infinity) - (b.seconds || Infinity);
+    }).slice(0, 50);
+  }, [persisted.history, leaderboardFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const nav = (next) => { setPage(next); setNotice(''); };
   const selectedPlayers = playerNames.slice(0, playerCount);
@@ -195,7 +215,7 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools"><button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button><span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><h3>Recent top scores</h3><p>Ranked by score · Local device only</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{localLeaderboard.length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>Rank</span><span>Player</span><span>Mode</span><span>Difficulty</span><span>Score</span></div>{localLeaderboard.map((row, i) => <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player"><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.mode === 'local' ? 'Local' : 'Solo'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong></div>)}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
+      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><h3>Recent top scores</h3><p>Ranked by score · Local device only</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '8px', padding: '0 14px 14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div>{localLeaderboard.length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>Rank</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{localLeaderboard.map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
 
       {page === 'profile' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PROGRESS</span><h1>Player profile</h1><p>Your stats and records on this device.</p></div><div className="profile-card"><div className="profile-identity"><div className="profile-avatar">{(customName.trim()[0] || 'P').toUpperCase()}</div><div><h2>{customName || 'Player'}</h2><p>MindFlip player <span className="local-badge">Local profile</span></p></div></div><label className="field-label profile-name-field">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Your name" /></label><div className="profile-stats"><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div><div><small>Best solo score</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div><p className="profile-help"><Info size={15} /> Your local profile is saved in this browser. Sign-in and cross-device syncing can be added with Supabase.</p></div></section>}
 
