@@ -35,6 +35,27 @@
   .setup-summary span { font-size: 11px; margin-bottom: 6px; }
   .setup-summary strong { font-size: 13px; }
   .full-btn { padding: 15px; font-size: 14px; }
+  
+  .game-wrap { padding-top: 15px; padding-bottom: 25px; }
+  .game-heading { margin: 15px 0 15px; }
+  .game-heading h1 { font-size: 28px; margin: 0; letter-spacing: -1.2px; }
+  .game-metrics { margin-bottom: 12px; }
+  .metric { padding: 10px 14px; }
+  .metric strong { font-size: 17px; }
+  .game-tools { margin-top: 12px; }
+  
+  .card-grid {
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  }
+  .memory-card {
+    height: auto;
+    width: auto;
+    max-width: 100%;
+    max-height: calc((100vh - 350px) / var(--rows));
+    min-height: 65px;
+    min-width: 53.3px; /* 65 * 0.82 */
+    justify-self: center;
+  }
 }
 @media(max-width:800px){.topbar{padding:0 20px}.container{padding:0 20px}.hero{gap:25px;padding-top:48px}.hero-art{height:245px}.floating-card{width:83px;height:112px}.floating-card span{width:53px;height:72px}.card-one{transform:rotate(-14deg) translate(-54px,10px)}.card-three{transform:rotate(13deg) translate(54px,12px)}.mode-grid{gap:10px}.mode-card{padding:16px;min-height:218px}.coming-badge{position:static;margin-top:10px}.setup-grid{grid-template-columns:1fr}.setup-panel{padding:20px}.players-panel{order:-1}.quick-stats{margin-bottom:50px}.nav-link{padding:9px}.nav-link svg{display:none}}
 @media(max-width:580px){.topbar{height:66px;padding:0 14px}.brand-mark{width:34px;height:34px}.brand strong{font-size:16px}.main-nav{gap:0}.nav-link{font-size:0;padding:9px 10px}.nav-link svg{display:block;width:18px;height:18px}.top-actions{gap:5px}.top-actions .icon-btn{width:34px;height:34px}.avatar{width:32px;height:32px}.container{padding:0 15px}.hero{grid-template-columns:1fr;gap:25px;padding:43px 0 30px}.hero h1{font-size:51px;letter-spacing:-2.8px}.hero-copy>p{font-size:13px}.hero-art{height:215px}.quick-stats{gap:7px;margin-bottom:44px}.stat{padding:12px 9px;gap:8px;border-radius:12px}.stat-icon{width:30px;height:30px;border-radius:9px}.stat small{font-size:9px}.stat strong{font-size:18px}.section-heading{align-items:flex-start}.section-heading h2{font-size:21px}.section-note{display:none}.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0;padding:17px;display:grid;grid-template-columns:43px 1fr;column-gap:13px;align-items:start}.mode-card .mode-icon{grid-row:span 2;margin:0}.mode-title{margin:2px 0 5px}.mode-description{grid-column:2;max-width:none}.mode-footer{grid-column:2;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.coming-badge{grid-column:2;justify-self:start}.bottom-strip{align-items:flex-start;flex-wrap:wrap;padding:14px}.bottom-strip>div:nth-child(2){width:calc(100% - 55px);flex:auto}.bottom-strip .text-btn{margin-left:51px}.footer{flex-wrap:wrap;gap:12px;padding:16px}.footer>span{display:none}.setup-wrap,.game-wrap,.content-page{padding:27px 0 45px}.page-title{margin:23px 0}.page-title h1{font-size:37px}.setup-panel{padding:17px}.player-fields{grid-template-columns:1fr}.game-heading{align-items:flex-start;flex-direction:column;margin:25px 0 18px}.game-heading h1{font-size:31px}.game-top .game-chip{font-size:8px}.game-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric{min-width:0;padding:9px}.metric strong{font-size:17px}.scoreboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.score-player{padding:7px}.card-grid{gap:6px;padding:8px;border-radius:12px}.memory-card{border-radius:8px}.card-mark{width:23px;height:23px;font-size:14px}.card-front{font-size:clamp(16px,6vw,26px)}.card-grid.dense{gap:4px;padding:6px}.card-grid.dense .card-mark{width:18px;height:18px;font-size:11px}.card-grid.extra-dense{gap:3px;padding:5px}.card-grid.extra-dense .card-mark{width:14px;height:14px;font-size:9px}.game-tools{gap:7px}.game-tools>span{font-size:9px}.game-tools .btn{padding:9px;font-size:10px}.result-stats{grid-template-columns:repeat(2,1fr)}.results-panel{padding:24px 14px}.leaderboard-head{align-items:flex-start;padding:17px 14px}.leaderboard-list{padding:0 12px}.leader-row{grid-template-columns:29px minmax(90px,1.2fr) minmax(45px,.5fr) 62px;gap:6px;font-size:10px}.leader-row>*:nth-child(4){display:none}.leader-row>strong{font-size:11px}.table-header{font-size:8px}.leader-player{gap:5px}.leader-player .player-avatar{width:23px;height:23px}.leaderboard-note{padding:13px;font-size:10px}.profile-card{padding:17px}.profile-stats{gap:6px}.profile-stats>div{padding:11px 8px}.profile-stats small{font-size:9px}.profile-stats strong{font-size:17px}.settings-card{padding:5px 14px}.setting-row{gap:9px}.setting-icon{width:33px;height:33px}.setting-copy strong{font-size:11px}.setting-copy small{font-size:9px}.danger-btn{font-size:9px;padding:8px}.online-grid{grid-template-columns:1fr}.online-card{padding:19px}.online-card>p{min-height:0}.game-chip{max-width:45%}}
