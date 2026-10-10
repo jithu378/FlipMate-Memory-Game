@@ -58,7 +58,10 @@ export default function App() {
   const [roomCode, setRoomCode] = useState('');
   const [roomCreated, setRoomCreated] = useState(false);
   const [customName, setCustomName] = useState(persisted.displayName || 'Player');
-  const [leaderboardFilter, setLeaderboardFilter] = useState(difficulty);
+  const [leaderboardFilter, setLeaderboardFilter] = useState('');
+  const [leaderboardTab, setLeaderboardTab] = useState('best');
+  const [historySort, setHistorySort] = useState('newest');
+  const [historyPlayerFilter, setHistoryPlayerFilter] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const startAt = useRef(null);
   const activeGameId = useRef(null);
@@ -104,10 +107,11 @@ export default function App() {
     setRunning(false); setPaused(false); setGameStatus(timedOut ? 'timeout' : 'complete');
     const current = readStore();
     const result = { id: gameId, mode, difficulty, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : (customName || 'Player') };
-    const history = [result, ...(current.history || []).filter(r => r.id !== gameId)].slice(0, 50);
+    const isMeaningful = moves > 0;
+    const history = isMeaningful ? [result, ...(current.history || []).filter(r => r.id !== gameId)].slice(0, 50) : (current.history || []);
     const bestKey = `${mode}-${difficulty}`;
     const bests = { ...(current.bests || {}) };
-    if (!bests[bestKey] || result.score > bests[bestKey].score) bests[bestKey] = result;
+    if (isMeaningful && (!bests[bestKey] || result.score > bests[bestKey].score)) bests[bestKey] = result;
     const updated = { ...current, history, bests, gamesPlayed: (current.gamesPlayed || 0) + 1, totalPairs: (current.totalPairs || 0) + completedPairs };
     setPersisted(updated); saveStore({ ...updated, dark, sound, displayName: customName });
   }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, customName, dark, sound]);
@@ -151,26 +155,63 @@ export default function App() {
   const resetGame = () => { setRunning(false); setPaused(false); setGameStatus('ready'); setPage('setup'); setDeck([]); setFlipped([]); setMatched([]); };
   const copyRoom = async () => { try { await navigator.clipboard.writeText(roomCode); toast('Room code copied.'); } catch { toast(`Share this code: ${roomCode}`); } };
   const createRoom = () => { const code = Math.random().toString(36).slice(2, 8).toUpperCase(); setRoomCode(code); setRoomCreated(true); toast('Demo room created locally. Online sync needs Supabase setup.'); };
-  const localLeaderboard = useMemo(() => {
+  const { bests, historyList, allPlayers } = useMemo(() => {
     const seenIds = new Set();
-    let list = [...(persisted.history || [])].filter(r => {
+    const cleanHistory = [...(persisted.history || [])].filter(r => {
       if (!r.id) return true;
       if (seenIds.has(r.id)) return false;
       seenIds.add(r.id);
       return true;
     });
-    if (leaderboardFilter && leaderboardFilter !== 'All') {
-      list = list.filter((r) => r.difficulty === leaderboardFilter);
+
+    let bestsArray = [];
+    const playerDiffs = new window.Map();
+    cleanHistory.forEach(r => {
+      if (r.score === 0) return;
+      const pName = (r.name || 'Player').trim();
+      const key = `${pName}-${r.difficulty}`;
+      if (!playerDiffs.has(key)) playerDiffs.set(key, []);
+      playerDiffs.get(key).push(r);
+    });
+
+    for (const records of playerDiffs.values()) {
+      records.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const accA = a.moves ? Math.round((a.completedPairs / a.moves) * 100) : 0;
+        const accB = b.moves ? Math.round((b.completedPairs / b.moves) * 100) : 0;
+        if (accA !== accB) return accB - accA;
+        if (a.moves !== b.moves) return (a.moves || Infinity) - (b.moves || Infinity);
+        return (a.seconds || Infinity) - (b.seconds || Infinity);
+      });
+      bestsArray.push(records[0]);
     }
-    return list.sort((a, b) => {
+
+    bestsArray.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       const accA = a.moves ? Math.round((a.completedPairs / a.moves) * 100) : 0;
       const accB = b.moves ? Math.round((b.completedPairs / b.moves) * 100) : 0;
       if (accA !== accB) return accB - accA;
       if (a.moves !== b.moves) return (a.moves || Infinity) - (b.moves || Infinity);
       return (a.seconds || Infinity) - (b.seconds || Infinity);
-    }).slice(0, 50);
-  }, [persisted.history, leaderboardFilter]);
+    });
+
+    let hList = [...cleanHistory];
+    const pSet = new Set(cleanHistory.map(r => (r.name || 'Player').trim()));
+
+    if (leaderboardFilter) {
+      bestsArray = bestsArray.filter((r) => r.difficulty === leaderboardFilter);
+      hList = hList.filter((r) => r.difficulty === leaderboardFilter);
+    }
+
+    if (historyPlayerFilter) {
+      hList = hList.filter(r => (r.name || 'Player').trim() === historyPlayerFilter);
+    }
+
+    if (historySort === 'score') hList.sort((a, b) => b.score - a.score);
+    else if (historySort === 'time') hList.sort((a, b) => (a.seconds || Infinity) - (b.seconds || Infinity));
+
+    return { bests: bestsArray.slice(0, 50), historyList: hList.slice(0, 100), allPlayers: Array.from(pSet) };
+  }, [persisted.history, leaderboardFilter, historySort, historyPlayerFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const nav = (next) => { setPage(next); setNotice(''); };
   const selectedPlayers = playerNames.slice(0, playerCount);
@@ -215,7 +256,7 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools"><button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button><span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><h3>Recent top scores</h3><p>Ranked by score · Local device only</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '8px', padding: '0 14px 14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div>{localLeaderboard.length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>Rank</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{localLeaderboard.map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
+      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardTab === 'best' ? 'selected' : ''}`} onClick={() => setLeaderboardTab('best')} style={{ padding: '6px 12px', fontSize: '11px' }}>Best Results</button><button className={`count-btn ${leaderboardTab === 'history' ? 'selected' : ''}`} onClick={() => setLeaderboardTab('history')} style={{ padding: '6px 12px', fontSize: '11px' }}>Game History</button></div><p>{leaderboardTab === 'best' ? 'Top score per player · Local device' : 'All recorded games · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(leaderboardFilter === f ? '' : f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div>{leaderboardTab === 'history' && <div style={{ display: 'flex', gap: '8px' }}><select value={historyPlayerFilter} onChange={(e) => setHistoryPlayerFilter(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="">All players</option>{allPlayers.map(p => <option key={p} value={p}>{p}</option>)}</select><select value={historySort} onChange={(e) => setHistorySort(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="newest">Newest first</option><option value="score">Highest score</option><option value="time">Fastest time</option></select></div>}</div>{(leaderboardTab === 'best' ? bests : historyList).length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>{leaderboardTab === 'best' ? 'Rank' : 'No.'}</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{(leaderboardTab === 'best' ? bests : historyList).map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${leaderboardTab === 'best' && i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
 
       {page === 'profile' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PROGRESS</span><h1>Player profile</h1><p>Your stats and records on this device.</p></div><div className="profile-card"><div className="profile-identity"><div className="profile-avatar">{(customName.trim()[0] || 'P').toUpperCase()}</div><div><h2>{customName || 'Player'}</h2><p>MindFlip player <span className="local-badge">Local profile</span></p></div></div><label className="field-label profile-name-field">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Your name" /></label><div className="profile-stats"><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div><div><small>Best solo score</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div><p className="profile-help"><Info size={15} /> Your local profile is saved in this browser. Sign-in and cross-device syncing can be added with Supabase.</p></div></section>}
 
