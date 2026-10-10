@@ -60,6 +60,7 @@ export default function App() {
   const [roomCreated, setRoomCreated] = useState(false);
   const [customName, setCustomName] = useState(persisted.displayName || 'Player');
   const [leaderboardFilter, setLeaderboardFilter] = useState('Easy');
+  const [leaderboardMode, setLeaderboardMode] = useState('solo');
   const [historyFilter, setHistoryFilter] = useState('Easy');
   const [historySort, setHistorySort] = useState('newest');
   const [historyPlayerFilter, setHistoryPlayerFilter] = useState('');
@@ -110,10 +111,51 @@ export default function App() {
     const result = { id: gameId, mode, difficulty, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : (customName || 'Player') };
     const isMeaningful = moves > 0;
     let newHistoryItems = [];
+    let updatedMultiWins = { ...(current.multiplayerWins || {}) };
+    
     if (isMeaningful) {
       if (isMultiplayer) {
+        const playerStats = [];
         for (let i = 0; i < playerCount; i++) {
           if (playerMoves[i] > 0 || scores[i] > 0) {
+            playerStats.push({
+              index: i,
+              score: Math.max(0, Math.round(scores[i] * 100 * settings.multiplier - playerMoves[i] * 5 - seconds)),
+              pairs: scores[i]
+            });
+          }
+        }
+        
+        let winnerIndex = -1;
+        let isTie = false;
+        
+        if (playerStats.length > 0) {
+          playerStats.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.pairs - a.pairs;
+          });
+          
+          if (playerStats.length === 1) {
+            winnerIndex = playerStats[0].index;
+          } else {
+            const first = playerStats[0];
+            const second = playerStats[1];
+            if (first.score === second.score && first.pairs === second.pairs) {
+              isTie = true;
+            } else {
+              winnerIndex = first.index;
+            }
+          }
+        }
+        
+        if (winnerIndex !== -1 && !isTie) {
+          const winnerName = (playerNames[winnerIndex] || `Player ${winnerIndex + 1}`).trim();
+          updatedMultiWins[winnerName] = (updatedMultiWins[winnerName] || 0) + 1;
+        }
+
+        for (let i = 0; i < playerCount; i++) {
+          if (playerMoves[i] > 0 || scores[i] > 0) {
+            const matchResult = isTie ? 'tie' : (i === winnerIndex ? 'winner' : 'loser');
             newHistoryItems.push({
               id: `${gameId}-${i}`,
               sessionId: gameId,
@@ -124,7 +166,8 @@ export default function App() {
               seconds,
               completedPairs: scores[i],
               date: new Date().toISOString(),
-              name: playerNames[i]
+              name: playerNames[i] || `Player ${i + 1}`,
+              matchResult
             });
           }
         }
@@ -147,10 +190,11 @@ export default function App() {
     const bestKey = `${mode}-${difficulty}`;
     const bests = { ...(current.bests || {}) };
     newHistoryItems.forEach(item => {
-      const bKey = `${mode}-${difficulty}`;
+      if (item.mode !== 'solo') return;
+      const bKey = `solo-${difficulty}`;
       if (!bests[bKey] || item.score > bests[bKey].score) bests[bKey] = item;
     });
-    const updated = { ...current, history, bests, gamesPlayed: (current.gamesPlayed || 0) + 1, totalPairs: (current.totalPairs || 0) + completedPairs };
+    const updated = { ...current, history, bests, multiplayerWins: updatedMultiWins, gamesPlayed: (current.gamesPlayed || 0) + 1, totalPairs: (current.totalPairs || 0) + completedPairs };
     setPersisted(updated); saveStore({ ...updated, dark, sound, displayName: customName });
   }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, customName, dark, sound, playerMoves, playerCount]);
 
@@ -194,7 +238,7 @@ export default function App() {
   const resetGame = () => { setRunning(false); setPaused(false); setGameStatus('ready'); setPage('setup'); setDeck([]); setFlipped([]); setMatched([]); };
   const copyRoom = async () => { try { await navigator.clipboard.writeText(roomCode); toast('Room code copied.'); } catch { toast(`Share this code: ${roomCode}`); } };
   const createRoom = () => { const code = Math.random().toString(36).slice(2, 8).toUpperCase(); setRoomCode(code); setRoomCreated(true); toast('Demo room created locally. Online sync needs Supabase setup.'); };
-  const { bests, historyList, allPlayers } = useMemo(() => {
+  const { bests, multiBests, historyList, allPlayers, multiWins } = useMemo(() => {
     const seenIds = new Set();
     const cleanHistory = [...(persisted.history || [])].filter(r => {
       if (!r.id) return true;
@@ -203,14 +247,23 @@ export default function App() {
       return true;
     });
 
+    const multiWins = persisted.multiplayerWins || {};
     let bestsArray = [];
     const playerDiffs = new window.Map();
+    let multiBestsArray = [];
+    const multiPlayerDiffs = new window.Map();
+
     cleanHistory.forEach(r => {
       if (r.score === 0) return;
       const pName = (r.name || 'Player').trim();
       const key = `${pName}-${r.difficulty}`;
-      if (!playerDiffs.has(key)) playerDiffs.set(key, []);
-      playerDiffs.get(key).push(r);
+      if (r.mode === 'solo') {
+        if (!playerDiffs.has(key)) playerDiffs.set(key, []);
+        playerDiffs.get(key).push(r);
+      } else {
+        if (!multiPlayerDiffs.has(key)) multiPlayerDiffs.set(key, []);
+        multiPlayerDiffs.get(key).push(r);
+      }
     });
 
     for (const records of playerDiffs.values()) {
@@ -225,6 +278,18 @@ export default function App() {
       bestsArray.push(records[0]);
     }
 
+    for (const records of multiPlayerDiffs.values()) {
+      records.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const accA = a.moves ? Math.round((a.completedPairs / a.moves) * 100) : 0;
+        const accB = b.moves ? Math.round((b.completedPairs / b.moves) * 100) : 0;
+        if (accA !== accB) return accB - accA;
+        if (a.moves !== b.moves) return (a.moves || Infinity) - (b.moves || Infinity);
+        return (a.seconds || Infinity) - (b.seconds || Infinity);
+      });
+      multiBestsArray.push(records[0]);
+    }
+
     bestsArray.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       const accA = a.moves ? Math.round((a.completedPairs / a.moves) * 100) : 0;
@@ -234,10 +299,19 @@ export default function App() {
       return (a.seconds || Infinity) - (b.seconds || Infinity);
     });
 
+    multiBestsArray.sort((a, b) => {
+      const winsA = multiWins[a.name] || 0;
+      const winsB = multiWins[b.name] || 0;
+      if (winsA !== winsB) return winsB - winsA;
+      if (b.score !== a.score) return b.score - a.score;
+      return b.completedPairs - a.completedPairs;
+    });
+
     let hList = [...cleanHistory];
     const pSet = new Set(cleanHistory.map(r => (r.name || 'Player').trim()));
 
     bestsArray = bestsArray.filter((r) => r.difficulty === leaderboardFilter);
+    multiBestsArray = multiBestsArray.filter((r) => r.difficulty === leaderboardFilter);
     hList = hList.filter((r) => r.difficulty === historyFilter);
 
     if (historyPlayerFilter) {
@@ -247,13 +321,13 @@ export default function App() {
     if (historySort === 'score') hList.sort((a, b) => b.score - a.score);
     else if (historySort === 'time') hList.sort((a, b) => (a.seconds || Infinity) - (b.seconds || Infinity));
 
-    return { bests: bestsArray.slice(0, 50), historyList: hList.slice(0, 100), allPlayers: Array.from(pSet) };
-  }, [persisted.history, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
+    return { bests: bestsArray.slice(0, 50), multiBests: multiBestsArray.slice(0, 50), historyList: hList, allPlayers: Array.from(pSet), multiWins };
+  }, [persisted.history, persisted.multiplayerWins, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const nav = (next) => {
     if (next !== page) {
       if (next === 'leaderboard') setLeaderboardFilter('Easy');
-      if (next === 'history') setHistoryFilter('Easy');
+      if (next === 'history' || next === 'multiplayer_history') setHistoryFilter('Easy');
     }
     setPage(next);
     setNotice('');
@@ -275,7 +349,8 @@ export default function App() {
       <nav className="main-nav" aria-label="Main navigation">
         <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => nav('home')}><House size={16} /> Home</button>
         <button className={page === 'leaderboard' ? 'nav-link active' : 'nav-link'} onClick={() => nav('leaderboard')}><Trophy size={16} /> Leaderboard</button>
-        <button className={page === 'history' ? 'nav-link active' : 'nav-link'} onClick={() => nav('history')}><Clock3 size={16} /> Game History</button>
+        <button className={page === 'history' ? 'nav-link active' : 'nav-link'} onClick={() => nav('history')}><Clock3 size={16} /> Solo History</button>
+        <button className={page === 'multiplayer_history' ? 'nav-link active' : 'nav-link'} onClick={() => nav('multiplayer_history')}><Users size={16} /> Multiplayer History</button>
         <button className={page === 'profile' ? 'nav-link active' : 'nav-link'} onClick={() => nav('profile')}><UserRound size={16} /> Profile</button>
       </nav>
       <div className="top-actions"><button className="icon-btn" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((v) => !v)}>{dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}</button><button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => nav('settings')}><Settings size={18} aria-hidden="true" /></button><button className="avatar" aria-label="Profile" onClick={() => nav('profile')}>{(customName.trim()[0] || 'P').toUpperCase()}</button></div>
@@ -301,9 +376,9 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools"><button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button><span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><p>Top score per player · Local device</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div></div>{bests.length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>Rank</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{bests.map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
-
-      {page === 'history' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PAST ROUNDS</span><h1>Game History</h1><p>All recorded games saved on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><p>All recorded games · Local device</p></div><span className="local-badge"><Clock3 size={14} /> Game history</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${historyFilter === f ? 'selected' : ''}`} onClick={() => setHistoryFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><div style={{ display: 'flex', gap: '8px' }}><select value={historyPlayerFilter} onChange={(e) => setHistoryPlayerFilter(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="">All players</option>{allPlayers.map(p => <option key={p} value={p}>{p}</option>)}</select><select value={historySort} onChange={(e) => setHistorySort(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="newest">Newest first</option><option value="score">Highest score</option><option value="time">Fastest time</option></select></div></div>{historyList.length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>No.</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{historyList.map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className="rank">{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Clock3 size={24} /></span><h3>No games yet</h3><p>Complete a round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
+      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>Top score per player · Local device</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div></div>{(leaderboardMode === 'solo' ? bests : multiBests).length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>Rank</span><span>Player</span><span>Diff</span><span>Score</span>{leaderboardMode === 'multiplayer' && <span>Wins</span>}<span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{(leaderboardMode === 'solo' ? bests : multiBests).map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className={`rank ${i < 3 ? 'top-rank' : ''}`}>{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title={row.mode === 'local' ? 'Local Multiplayer' : 'Solo'}><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong>{leaderboardMode === 'multiplayer' && <span>{multiWins[row.name] || 0}</span>}<span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No scores yet</h3><p>Play your first round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
+      {page === 'history' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PAST ROUNDS</span><h1>Solo Game History</h1><p>All recorded solo games saved on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><p>All recorded solo games · Local device</p></div><span className="local-badge"><Clock3 size={14} /> Game history</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${historyFilter === f ? 'selected' : ''}`} onClick={() => setHistoryFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><div style={{ display: 'flex', gap: '8px' }}><select value={historyPlayerFilter} onChange={(e) => setHistoryPlayerFilter(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="">All players</option>{allPlayers.map(p => <option key={p} value={p}>{p}</option>)}</select><select value={historySort} onChange={(e) => setHistorySort(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="newest">Newest first</option><option value="score">Highest score</option><option value="time">Fastest time</option></select></div></div>{historyList.filter(r => r.mode === 'solo').length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>No.</span><span>Player</span><span>Diff</span><span>Score</span><span>Time</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{historyList.filter(r => r.mode === 'solo').slice(0, 100).map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className="rank">{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title="Solo"><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span>{row.seconds ? formatTime(row.seconds) : '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Clock3 size={24} /></span><h3>No games yet</h3><p>Complete a solo round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
+      {page === 'multiplayer_history' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PAST ROUNDS</span><h1>Multiplayer History</h1><p>All recorded multiplayer matches on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><p>All recorded multiplayer games · Local device</p></div><span className="local-badge"><Users size={14} /> Match history</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${historyFilter === f ? 'selected' : ''}`} onClick={() => setHistoryFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><div style={{ display: 'flex', gap: '8px' }}><select value={historyPlayerFilter} onChange={(e) => setHistoryPlayerFilter(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="">All players</option>{allPlayers.map(p => <option key={p} value={p}>{p}</option>)}</select><select value={historySort} onChange={(e) => setHistorySort(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="newest">Newest first</option><option value="score">Highest score</option><option value="time">Fastest time</option></select></div></div>{historyList.filter(r => r.mode !== 'solo').length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>No.</span><span>Player</span><span>Diff</span><span>Score</span><span>Result</span><span>Moves</span><span>Acc.</span><span>Date</span></div>{historyList.filter(r => r.mode !== 'solo').slice(0, 100).map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className="rank">{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title="Local Multiplayer"><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong>{row.score.toLocaleString()}</strong><span style={{color: row.matchResult === 'winner' ? 'var(--green)' : row.matchResult === 'tie' ? 'var(--yellow)' : 'inherit', textTransform: 'capitalize'}}>{row.matchResult || '—'}</span><span>{row.moves || 0}</span><span>{acc}%</span><span>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Users size={24} /></span><h3>No matches yet</h3><p>Complete a multiplayer match and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
       {page === 'profile' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PROGRESS</span><h1>Player profile</h1><p>Your stats and records on this device.</p></div><div className="profile-card"><div className="profile-identity"><div className="profile-avatar">{(customName.trim()[0] || 'P').toUpperCase()}</div><div><h2>{customName || 'Player'}</h2><p>MindFlip player <span className="local-badge">Local profile</span></p></div></div><label className="field-label profile-name-field">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Your name" /></label><div className="profile-stats"><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div><div><small>Best solo score</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div><p className="profile-help"><Info size={15} /> Your local profile is saved in this browser. Sign-in and cross-device syncing can be added with Supabase.</p></div></section>}
 
       {page === 'settings' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT COMFORTABLE</span><h1>Settings</h1><p>A few small things to make MindFlip feel like yours.</p></div><div className="settings-card"><div className="setting-row"><span className="setting-icon"><dark-icon>{dark ? <Moon size={19} /> : <Sun size={19} />}</dark-icon></span><div className="setting-copy"><strong>Appearance</strong><small>Choose a theme that's comfortable for you.</small></div><button className="toggle-pill" onClick={() => setDark((v) => !v)}>{dark ? 'Dark' : 'Light'}<span className={dark ? 'toggle-knob on' : 'toggle-knob'} /></button></div><div className="setting-row"><span className="setting-icon">{sound ? <Volume2 size={19} /> : <VolumeX size={19} />}</span><div className="setting-copy"><strong>Sound effects</strong><small>Play a subtle sound when you find a match.</small></div><button className={sound ? 'switch on' : 'switch'} aria-label="Toggle sound" onClick={() => setSound((v) => !v)}><span /></button></div><div className="setting-row"><span className="setting-icon"><BarChart3 size={19} /></span><div className="setting-copy"><strong>Local data</strong><small>Clear this browser's saved results and preferences.</small></div><button className="btn danger-btn" onClick={() => { if (window.confirm('Clear local game history and saved statistics?')) { const clean = { displayName: customName }; setPersisted(clean); saveStore({ ...clean, dark, sound }); toast('Local history cleared.'); } }}><Trash2 size={14} aria-hidden="true" /> Clear data</button></div><div className="settings-foot"><Info size={15} /><p>MindFlip is a work-in-progress starter. Online rooms, accounts, and global rankings require Supabase configuration before they can be used across devices.</p></div></div></section>}
