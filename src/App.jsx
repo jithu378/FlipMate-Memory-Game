@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Brain, Moon, Sun, Volume2, VolumeX, Trophy, Users, UserRound, Globe2,
   Settings, ArrowLeft, RotateCcw, Pause, Play, Clock3, Target, Zap,
@@ -43,6 +43,19 @@ export default function App() {
     const validPages = ['home', 'setup', 'game', 'leaderboard', 'history', 'multiplayer-history', 'profile', 'settings', 'online', 'how-to-play', 'about-developer'];
     return validPages.includes(path) ? path.replace('-', '_') : 'home';
   });
+  const previousPage = useRef(page);
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (previousPage.current === page) return;
+    previousPage.current = page;
+    window.scrollTo(0, 0);
+  }, [page]);
   const [mode, setMode] = useState('solo');
   const [difficulty, setDifficulty] = useState('Normal');
   const [theme, setTheme] = useState('Random');
