@@ -49,6 +49,7 @@ export default function App() {
   const [scores, setScores] = useState([0, 0, 0, 0]);
   const [activePlayer, setActivePlayer] = useState(0);
   const [moves, setMoves] = useState(0);
+  const [playerMoves, setPlayerMoves] = useState([0, 0, 0, 0]);
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -99,7 +100,7 @@ export default function App() {
     recordedGameId.current = null;
     setMode(chosenMode);
     const pairs = DIFFICULTIES[difficulty].pairs;
-    setDeck(makeDeck(pairs, theme)); setFlipped([]); setMatched([]); setScores([0, 0, 0, 0]); setActivePlayer(0); setMoves(0); setSeconds(0); setPaused(false); setRunning(true); setGameStatus('playing'); setHintUsed(false); startAt.current = Date.now(); setPage('game');
+    setDeck(makeDeck(pairs, theme)); setFlipped([]); setMatched([]); setScores([0, 0, 0, 0]); setPlayerMoves([0, 0, 0, 0]); setActivePlayer(0); setMoves(0); setSeconds(0); setPaused(false); setRunning(true); setGameStatus('playing'); setHintUsed(false); startAt.current = Date.now(); setPage('game');
   };
   const finishGame = useCallback((gameId, timedOut = false, completedPairs = matched.length / 2) => {
     if (!gameId || activeGameId.current !== gameId || recordedGameId.current === gameId) return;
@@ -108,13 +109,50 @@ export default function App() {
     const current = readStore();
     const result = { id: gameId, mode, difficulty, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : (customName || 'Player') };
     const isMeaningful = moves > 0;
-    const history = isMeaningful ? [result, ...(current.history || []).filter(r => r.id !== gameId)].slice(0, 50) : (current.history || []);
+    let newHistoryItems = [];
+    if (isMeaningful) {
+      if (isMultiplayer) {
+        for (let i = 0; i < playerCount; i++) {
+          if (playerMoves[i] > 0 || scores[i] > 0) {
+            newHistoryItems.push({
+              id: `${gameId}-${i}`,
+              sessionId: gameId,
+              mode,
+              difficulty,
+              score: Math.max(0, Math.round(scores[i] * 100 * settings.multiplier - playerMoves[i] * 5 - seconds)),
+              moves: playerMoves[i],
+              seconds,
+              completedPairs: scores[i],
+              date: new Date().toISOString(),
+              name: playerNames[i]
+            });
+          }
+        }
+      } else {
+        newHistoryItems.push({
+          id: gameId,
+          sessionId: gameId,
+          mode,
+          difficulty,
+          score: Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)),
+          moves,
+          seconds,
+          completedPairs,
+          date: new Date().toISOString(),
+          name: customName || 'Player'
+        });
+      }
+    }
+    const history = isMeaningful ? [...newHistoryItems, ...(current.history || []).filter(r => r.sessionId !== gameId && r.id !== gameId && !r.id?.startsWith(`${gameId}-`))].slice(0, 50) : (current.history || []);
     const bestKey = `${mode}-${difficulty}`;
     const bests = { ...(current.bests || {}) };
-    if (isMeaningful && (!bests[bestKey] || result.score > bests[bestKey].score)) bests[bestKey] = result;
+    newHistoryItems.forEach(item => {
+      const bKey = `${mode}-${difficulty}`;
+      if (!bests[bKey] || item.score > bests[bKey].score) bests[bKey] = item;
+    });
     const updated = { ...current, history, bests, gamesPlayed: (current.gamesPlayed || 0) + 1, totalPairs: (current.totalPairs || 0) + completedPairs };
     setPersisted(updated); saveStore({ ...updated, dark, sound, displayName: customName });
-  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, customName, dark, sound]);
+  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, customName, dark, sound, playerMoves, playerCount]);
 
   useEffect(() => {
     if (complete && gameStatus === 'playing') finishGame(activeGameId.current, false, deck.length / 2);
@@ -127,6 +165,7 @@ export default function App() {
     const next = [...flipped, card.id]; setFlipped(next);
     if (next.length !== 2) return;
     setMoves((n) => n + 1);
+    setPlayerMoves((old) => { const updated = [...old]; updated[activePlayer] += 1; return updated; });
     const first = deck.find((c) => c.id === next[0]);
     if (first && first.pair === card.pair) {
       window.setTimeout(() => {
