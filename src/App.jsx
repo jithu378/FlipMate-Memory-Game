@@ -387,32 +387,36 @@ export default function App() {
           groups.get(k).records.push(r);
         });
         return Array.from(groups.values()).map((match, mIdx, arr) => (
-          <div key={match.id} className="match-card" style={{ background: 'var(--surface-2)', borderRadius: '12px', border: '1px solid var(--line)', overflow: 'hidden' }}>
-            <div className="match-head" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.1)' }}>
+          <div key={match.id} className="match-card" style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)', overflow: 'hidden' }}>
+            <div className="match-head" style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-2)' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <strong style={{ fontSize: '13px' }}>Match {arr.length - mIdx}</strong>
-                <span className="local-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>{match.difficulty}</span>
+                <strong style={{ fontSize: '13px', color: 'var(--text)' }}>Match {arr.length - mIdx}</strong>
+                <span className="local-badge" style={{ fontSize: '10px', padding: '3px 8px', background: 'var(--surface)', border: '1px solid var(--line)', margin: 0 }}>{match.difficulty}</span>
               </div>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+              <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
             </div>
             <div className="leaderboard-list">
-              <div className="leader-row table-header" style={{ borderBottom: '1px solid var(--line-light)' }}>
-                <span>Player</span><span>Score</span><span>Result</span><span>Moves</span><span>Acc.</span>
+              <div className="leader-row match-row table-header" style={{ borderBottom: '1px solid var(--line)', opacity: 0.8 }}>
+                <span>Player</span>
+                <span style={{ textAlign: 'right' }}>Score</span>
+                <span>Result</span>
+                <span style={{ textAlign: 'right' }}>Moves</span>
+                <span style={{ textAlign: 'right' }}>Acc.</span>
               </div>
               {match.records.map((row, i) => {
                 const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0;
-                return <div className="leader-row" key={row.id || i} style={{ borderBottom: i < match.records.length - 1 ? '1px solid var(--line-light)' : 'none' }}>
+                return <div className="leader-row match-row" key={row.id || i} style={{ borderBottom: i < match.records.length - 1 ? '1px solid var(--line)' : 'none' }}>
                   <span className="leader-player" title="Local Multiplayer">
                     <span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>
                     {row.name || 'Player'}
                   </span>
-                  <strong>{row.score.toLocaleString()}</strong>
-                  <span style={{ color: row.matchResult === 'winner' ? 'var(--green)' : row.matchResult === 'tie' ? 'var(--yellow)' : 'inherit', textTransform: 'capitalize', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    {row.matchResult === 'winner' && <Trophy size={13} />}
-                    {row.matchResult === 'winner' ? 'Winner' : row.matchResult === 'tie' ? 'Draw' : row.matchResult === 'loser' ? 'Loser' : 'Result unavailable'}
+                  <strong style={{ fontSize: '13px', color: 'var(--text)', textAlign: 'right' }}>{row.score.toLocaleString()}</strong>
+                  <span style={{ color: row.matchResult === 'winner' ? 'var(--green)' : row.matchResult === 'tie' ? 'inherit' : 'var(--muted)', textTransform: 'capitalize', display: 'flex', gap: '5px', alignItems: 'center', fontWeight: row.matchResult === 'winner' ? 600 : 500 }}>
+                    {row.matchResult === 'winner' && <Trophy size={13} strokeWidth={2.5} />}
+                    {row.matchResult === 'winner' ? 'Winner' : row.matchResult === 'tie' ? 'Draw' : row.matchResult === 'loser' ? 'Loser' : '—'}
                   </span>
-                  <span>{row.moves || 0}</span>
-                  <span>{acc}%</span>
+                  <span style={{ textAlign: 'right' }}>{row.moves || 0}</span>
+                  <span style={{ textAlign: 'right' }}>{acc}%</span>
                 </div>;
               })}
             </div>

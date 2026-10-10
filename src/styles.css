@@ -1356,6 +1356,10 @@ button:disabled {
     border-bottom: 0
 }
 
+.match-row {
+    grid-template-columns: minmax(110px, 1.8fr) 70px minmax(90px, 1fr) 55px 50px;
+}
+
 .leader-row>strong {
     color: var(--text);
     text-align: right;
@@ -2333,6 +2337,10 @@ button:disabled {
         grid-template-columns: 29px minmax(80px, 1fr) minmax(40px, .4fr) 50px 35px 35px 35px;
         gap: 6px;
         font-size: 10px
+    }
+
+    .match-row {
+        grid-template-columns: minmax(90px, 1.5fr) 55px minmax(70px, 1fr) 40px 40px;
     }
 
     .leader-row>*:nth-child(8) {
