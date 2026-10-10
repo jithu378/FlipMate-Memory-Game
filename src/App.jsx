@@ -70,6 +70,7 @@ export default function App() {
   const totalPairs = settings.pairs;
   const complete = matched.length === deck.length && deck.length > 0;
   const accuracy = moves ? Math.round((matched.length / 2 / moves) * 100) : 100;
+  const isGameplayActive = page === 'game' && (gameStatus === 'playing' || gameStatus === 'paused');
 
   useEffect(() => { saveStore({ ...persisted, dark, sound, displayName: customName }); }, [persisted, dark, sound, customName]);
   useEffect(() => {
@@ -150,8 +151,8 @@ export default function App() {
   const nav = (next) => { setPage(next); setNotice(''); };
   const selectedPlayers = playerNames.slice(0, playerCount);
 
-  return <div className={dark ? 'app dark' : 'app'}>
-    <header className="topbar">
+  return <div className={`${dark ? 'app dark' : 'app'} ${isGameplayActive ? 'immersive-mode' : ''}`}>
+    {!isGameplayActive && <header className="topbar">
       <button className="brand" onClick={() => nav('home')} aria-label="MindFlip home"><span className="brand-mark"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>mindflip</strong><small>by JB Devs</small></span></button>
       <nav className="main-nav" aria-label="Main navigation">
         <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => nav('home')}><House size={16}/> Home</button>
@@ -159,7 +160,7 @@ export default function App() {
         <button className={page === 'profile' ? 'nav-link active' : 'nav-link'} onClick={() => nav('profile')}><UserRound size={16}/> Profile</button>
       </nav>
       <div className="top-actions"><button className="icon-btn" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((v) => !v)}>{dark ? <Sun size={18} aria-hidden="true"/> : <Moon size={18} aria-hidden="true"/>}</button><button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => nav('settings')}><Settings size={18} aria-hidden="true"/></button><button className="avatar" aria-label="Profile" onClick={() => nav('profile')}>{(customName.trim()[0] || 'P').toUpperCase()}</button></div>
-    </header>
+    </header>}
 
     <main className="container">
       {page === 'home' && <>
@@ -189,7 +190,7 @@ export default function App() {
 
       {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16}/> Back home</button><div className="page-title"><span className="eyebrow">BRING YOUR FRIENDS</span><h1>Play online</h1><p>Set up a room for friends on different devices.</p></div><div className="online-grid"><div className="online-card"><span className="mode-icon peach"><Globe2 size={22}/></span><h2>Create a room</h2><p>Start a private room and share its code with your friends.</p>{!roomCreated ? <button className="btn primary full-btn" onClick={createRoom}><Globe2 size={16} aria-hidden="true"/> Create demo room</button> : <div className="room-code"><span>{roomCode}</span><button className="icon-btn" onClick={copyRoom} aria-label="Copy room code"><Copy size={17}/></button></div>}<small className="setup-warning">Demo only: this room code is generated in this browser and is not shared online.</small></div><div className="online-card"><span className="mode-icon lavender"><Users size={22}/></span><h2>Join a room</h2><p>Have a room code from a friend? Enter it here.</p><form onSubmit={(e) => { e.preventDefault(); toast('Online room joining is not connected yet. Configure Supabase first.'); }}><label className="field-label">Room code<input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0,8))} placeholder="e.g. MF7K29" maxLength={8}/></label><button className="btn secondary full-btn" type="submit" disabled={roomCode.trim().length < 4}><LogIn size={16} aria-hidden="true"/> Join room</button></form><small className="setup-warning">Online room joining will work after the Supabase multiplayer backend is implemented and configured.</small></div></div><div className="leaderboard-note online-note"><Info size={16}/><p><strong>What's working now?</strong> You can play solo and local multiplayer on this device, save local results, and explore the UI. Real-time cross-device rooms, authentication, and a global leaderboard need the backend setup described in the README.</p></div></section>}
     </main>
-    <footer className="footer"><div className="footer-brand"><span className="brand-mark small"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>mindflip</strong><small>by JB Devs</small></span></div><span>Made for curious minds.</span><button className="footer-help" onClick={() => setShowHelp(true)}><Info size={14}/> How to play</button></footer>
+    {!isGameplayActive && <footer className="footer"><div className="footer-brand"><span className="brand-mark small"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>mindflip</strong><small>by JB Devs</small></span></div><span>Made for curious minds.</span><button className="footer-help" onClick={() => setShowHelp(true)}><Info size={14}/> How to play</button></footer>}
     {notice && <div className="toast" role="status"><Check size={16}/>{notice}</div>}
     {showHelp && <div className="modal-backdrop" onClick={() => setShowHelp(false)}><section className="help-modal" onClick={(e) => e.stopPropagation()}><button className="modal-close" onClick={() => setShowHelp(false)} aria-label="Close help"><X size={18}/></button><span className="mode-icon lavender"><Brain size={22}/></span><h2>How to play</h2><p>Flip two cards and look for matching symbols. In solo mode, try to finish with fewer moves. In local multiplayer, collect the most pairs to win.</p><div className="help-rule"><span>01</span><p><strong>Flip</strong><br/>Choose any two hidden cards.</p></div><div className="help-rule"><span>02</span><p><strong>Match</strong><br/>Matching pairs stay face up and score a point in multiplayer.</p></div><div className="help-rule"><span>03</span><p><strong>Remember</strong><br/>If the cards don't match, they turn back over. Use what you saw next turn.</p></div><button className="btn primary full-btn" onClick={() => setShowHelp(false)}>Got it</button></section></div>}
   </div>;
