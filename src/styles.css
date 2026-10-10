@@ -2024,8 +2024,11 @@ button:disabled {
 
 @media(max-width:580px) {
     .topbar {
-        height: 66px;
-        padding: 0 14px
+        height: auto;
+        min-height: 66px;
+        flex-wrap: wrap;
+        row-gap: 5px;
+        padding: 8px 14px 0
     }
 
     .brand-mark {
@@ -2038,7 +2041,11 @@ button:disabled {
     }
 
     .main-nav {
-        gap: 0
+        order: 3;
+        flex: 1 0 100%;
+        gap: 0;
+        justify-content: space-around;
+        border-top: 1px solid var(--line)
     }
 
     .nav-link {
