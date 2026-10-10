@@ -155,7 +155,7 @@ export default function App() {
   const gridGap = difficulty === 'Extreme' ? 4 : difficulty === 'Hard' ? 6 : 8;
   const gridPadding = difficulty === 'Extreme' ? 6 : difficulty === 'Hard' ? 8 : 10;
   const maxBoardWidth = gridColumns * 170 + (gridColumns - 1) * gridGap + gridPadding * 2 + 2;
-  const maxBoardHeight = gridRows * 155 + (gridRows - 1) * gridGap + gridPadding * 2 + 2;
+  const maxBoardHeight = gridRows * 185 + (gridRows - 1) * gridGap + gridPadding * 2 + 2;
 
   return <div className={`${dark ? 'app dark' : 'app'} ${isGameplayActive ? 'immersive-mode' : ''}`}>
     {!isGameplayActive && <header className="topbar">
