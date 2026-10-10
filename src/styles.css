@@ -1343,13 +1343,17 @@ button:disabled {
 
 .leader-row {
     display: grid;
-    grid-template-columns: 35px minmax(100px, 1.2fr) minmax(50px, .6fr) 60px 45px 45px 45px 65px;
+    grid-template-columns: 32px minmax(100px, 1.5fr) minmax(50px, 0.8fr) 75px 45px 45px 45px 75px;
     align-items: center;
     gap: 10px;
     min-height: 61px;
     border-bottom: 1px solid var(--line);
     font-size: 11px;
     color: var(--muted)
+}
+
+.leader-row.multi-leader-row {
+    grid-template-columns: 32px minmax(90px, 1.5fr) minmax(45px, 0.7fr) 75px 40px 45px 45px 45px 75px;
 }
 
 .leader-row:last-child {
@@ -2333,18 +2337,26 @@ button:disabled {
         padding: 0 12px
     }
 
+    .leaderboard-list {
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+
     .leader-row {
-        grid-template-columns: 29px minmax(80px, 1fr) minmax(40px, .4fr) 50px 35px 35px 35px;
+        min-width: 580px;
+        grid-template-columns: 32px minmax(100px, 1.5fr) minmax(50px, 0.8fr) 75px 45px 45px 45px 75px;
         gap: 6px;
         font-size: 10px
     }
 
-    .match-row {
-        grid-template-columns: minmax(90px, 1.5fr) 55px minmax(70px, 1fr) 40px 40px;
+    .leader-row.multi-leader-row {
+        min-width: 630px;
+        grid-template-columns: 32px minmax(90px, 1.5fr) minmax(45px, 0.7fr) 75px 40px 45px 45px 45px 75px;
     }
 
-    .leader-row>*:nth-child(8) {
-        display: none
+    .match-row {
+        min-width: 0;
+        grid-template-columns: minmax(90px, 1.5fr) 55px minmax(70px, 1fr) 40px 40px;
     }
 
     .leader-row>strong {
