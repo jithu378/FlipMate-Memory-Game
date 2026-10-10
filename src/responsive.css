@@ -63,10 +63,6 @@
     letter-spacing: -1.3px;
   }
 
-  .card-grid.dense {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
   .modal-backdrop {
     overflow-y: auto;
     padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
@@ -158,11 +154,6 @@
 @media (max-width: 359px) {
   body {
     min-width: 0;
-  }
-
-  .card-grid,
-  .card-grid.dense {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .game-top .back-link {
