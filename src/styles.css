@@ -3022,7 +3022,7 @@ button:disabled {
     .setup-wrap {
         max-width: 580px;
         margin: 0 auto;
-        padding: 16px 0 24px;
+        padding: 16px 0 calc(40px + env(safe-area-inset-bottom, 0px));
     }
 
     .setup-grid {
@@ -3322,7 +3322,10 @@ button:disabled {
         padding: 27px 0 20px;
     }
 
-    .setup-wrap,
+    .setup-wrap {
+        padding: 16px 0 calc(48px + env(safe-area-inset-bottom, 0px));
+    }
+
     .game-wrap {
         padding: 16px 0 20px;
     }
@@ -3812,7 +3815,7 @@ button:disabled {
     }
 
     .setup-wrap {
-        padding: 10px 0 20px;
+        padding: 10px 0 calc(52px + env(safe-area-inset-bottom, 0px));
     }
 
     .setup-wrap .page-title h1 {
