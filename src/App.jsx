@@ -462,11 +462,58 @@ export default function App() {
 
     <main className="container">
       {page === 'home' && <>
-        <section className="hero"><div className="hero-copy"><span className="eyebrow"><span className="eyebrow-dot" /> A LITTLE CHALLENGE FOR YOUR MIND</span><h1>Make every<br /><span>move count.</span></h1><p>A simple game of memory. A friendly test of focus. Play your way, alone or together.</p><div className="hero-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}><button className="btn primary" onClick={() => { setMode('solo'); nav('setup'); }}>Play solo <ChevronRight size={17} /></button><button className="btn secondary" onClick={() => { setMode('local'); nav('setup'); }}><Users size={17} /> Play together</button><button className="btn secondary" onClick={() => nav('online')}><Globe2 size={17} /> Online Multiplayer <span className="coming-badge" style={{ marginLeft: '6px', fontSize: '10px' }}>Coming Soon</span></button></div><div className="hero-meta"><span><Check size={14} /> Free to play</span><span><Check size={14} /> No install needed</span></div></div><div className="hero-art" aria-label="Decorative memory cards"><div className="floating-card card-one"><span>◆</span></div><div className="floating-card card-two"><span>●</span></div><div className="floating-card card-three"><span>▲</span></div><div className="art-caption"><span className="caption-dot" /> YOUR NEXT LITTLE WIN</div></div></section>
-        <section className="quick-stats"><div className="stat"><span className="stat-icon"><Target size={18} /></span><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div></div><div className="stat"><span className="stat-icon"><Trophy size={18} /></span><div><small>Personal best</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div><div className="stat"><span className="stat-icon"><Sparkles size={18} /></span><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div></div></section>
-        <section className="section-block"><div className="section-heading"><div><span className="eyebrow">CHOOSE YOUR STYLE</span><h2>How do you want to play?</h2></div><span className="section-note">One game. Your rules.</span></div><div className="mode-grid"><button className="mode-card" onClick={() => { setMode('solo'); nav('setup'); }}><span className="mode-icon lavender"><UserRound size={22} /></span><span className="mode-title">Solo challenge</span><span className="mode-description">Beat your best score and sharpen your memory.</span><span className="mode-footer">Play alone <ChevronRight size={16} /></span></button><button className="mode-card" onClick={() => { setMode('local'); nav('setup'); }}><span className="mode-icon mint"><Users size={22} /></span><span className="mode-title">Local multiplayer</span><span className="mode-description">Take turns with 2–4 players on one device.</span><span className="mode-footer">Play together <ChevronRight size={16} /></span></button><button className="mode-card" onClick={() => nav('online')}><span className="mode-icon peach"><Globe2 size={22} /></span><span className="mode-title">Online multiplayer</span><span className="mode-description">Create a room and challenge friends on their devices.</span><span className="mode-footer">Explore online <ChevronRight size={16} /></span><span className="coming-badge">Backend setup needed</span></button></div></section>
-        
-        <section className="bottom-strip" style={{ marginTop: '48px' }}><div className="strip-icon"><Trophy size={20} /></div><div><strong>Ready to climb the rankings?</strong><p>Your local results are saved on this device. Online rankings can be enabled with Supabase.</p></div><button className="btn text-btn" onClick={() => nav('leaderboard')}>View scores <ChevronRight size={16} /></button></section>
+        <section className="section-block game-modes-block">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">GAME MODES</span>
+              <h2>Choose how you want to play</h2>
+              <p className="section-subtext">Pick a mode and get ready to test your memory.</p>
+            </div>
+          </div>
+          <div className="mode-grid">
+            <button className="mode-card" onClick={() => { setMode('solo'); nav('setup'); }}>
+              <span className="mode-icon lavender"><UserRound size={22} /></span>
+              <span className="mode-title">Play Solo</span>
+              <span className="mode-description">Beat your best score and sharpen your memory in a solo challenge.</span>
+              <span className="mode-footer">Play alone <ChevronRight size={16} /></span>
+            </button>
+            <button className="mode-card" onClick={() => { setMode('local'); nav('setup'); }}>
+              <span className="mode-icon mint"><Users size={22} /></span>
+              <span className="mode-title">Play with Friends</span>
+              <span className="mode-description">Take turns with 2–4 players locally on one device.</span>
+              <span className="mode-footer">Play together <ChevronRight size={16} /></span>
+            </button>
+            <button className="mode-card mode-card-online" onClick={() => nav('online')}>
+              <span className="mode-icon lavender"><Globe2 size={22} /></span>
+              <span className="coming-badge">Coming Soon</span>
+              <span className="mode-title">Online Multiplayer</span>
+              <span className="mode-description">Create private rooms and challenge friends on their own devices.</span>
+              <span className="mode-footer">Coming soon <ChevronRight size={16} /></span>
+            </button>
+          </div>
+        </section>
+
+        <section className="quick-stats">
+          <div className="stat"><span className="stat-icon"><Target size={18} /></span><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div></div>
+          <div className="stat"><span className="stat-icon"><Trophy size={18} /></span><div><small>Personal best</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div>
+          <div className="stat"><span className="stat-icon"><Sparkles size={18} /></span><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div></div>
+        </section>
+
+        <div className="hero-art home-illustration" aria-label="Decorative memory cards">
+          <div className="floating-card card-one"><span>◆</span></div>
+          <div className="floating-card card-two"><span>●</span></div>
+          <div className="floating-card card-three"><span>▲</span></div>
+          <div className="art-caption"><span className="caption-dot" /> YOUR NEXT LITTLE WIN</div>
+        </div>
+
+        <section className="bottom-strip">
+          <div className="strip-icon"><Trophy size={20} /></div>
+          <div>
+            <strong>Ready to climb the rankings?</strong>
+            <p>Your local results are saved on this device. Online rankings can be enabled with Supabase.</p>
+          </div>
+          <button className="btn text-btn" onClick={() => nav('leaderboard')}>View scores <ChevronRight size={16} /></button>
+        </section>
       </>}
       {page === 'setup' && <section className="setup-wrap"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT YOUR GAME</span><h1>{mode === 'solo' ? 'Solo challenge' : 'Play together'}</h1><p>{mode === 'solo' ? 'Pick a difficulty, choose a theme, and see how sharp your memory is.' : 'Add your players, pick a challenge, and pass the device around.'}</p></div><div className="setup-grid"><div className="setup-panel"><div className="panel-heading"><span className="step-number">01</span><div><h3>Choose difficulty</h3><p>More pairs means a bigger challenge.</p></div></div><div className="difficulty-list">{Object.entries(DIFFICULTIES).map(([name, value]) => <button key={name} className={difficulty === name ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => setDifficulty(name)}><span className="radio-dot" /><span className="difficulty-label"><strong>{name}</strong><small>{value.pairs} pairs · {value.time / 60} min</small></span><span className="difficulty-size">{name === 'Easy' ? '4 × 3' : name === 'Normal' ? '4 × 4' : name === 'Medium' ? '6 × 4' : name === 'Hard' ? '6 × 6' : '8 × 6'}</span></button>)}</div><div className="panel-heading theme-heading"><span className="step-number">02</span><div><h3>Choose a card theme</h3><p>Just a little personality.</p></div></div><div className="theme-options"><button className={theme === 'Random' ? 'theme-option selected' : 'theme-option'} onClick={() => setTheme('Random')}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}><Sparkles size={14} /></span><span>Random</span></button>{Object.keys(THEMES).map((name) => <button key={name} className={theme === name ? 'theme-option selected' : 'theme-option'} onClick={() => setTheme(name)}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>{name === 'Symbols' ? <><Circle size={14} /><Triangle size={14} /><Square size={14} /></> : name === 'Nature' ? <><Leaf size={14} /><Flower size={14} /><Bird size={14} /></> : name === 'Tech' ? <><Laptop size={14} /><Gamepad2 size={14} /><Cpu size={14} /></> : <><Coffee size={14} /><Book size={14} /><Gift size={14} /></>}</span><span>{name}</span></button>)}</div></div><div className="setup-panel players-panel"><div className="panel-heading"><span className="step-number">03</span><div><h3>{mode === 'solo' ? 'Your player name' : 'Meet the players'}</h3>{mode === 'solo' && <p>Your name appears in your results.</p>}</div></div>{mode === 'solo' ? <label className="field-label">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Enter your name" /></label> : <><div className="player-count">{[2, 3, 4].map((n) => <button key={n} className={playerCount === n ? 'count-btn selected' : 'count-btn'} onClick={() => setPlayerCount(n)}>{n} players</button>)}</div><div className="player-fields">{selectedPlayers.map((name, i) => { const tName = name.trim(); const lower = tName.toLowerCase(); const isEmpty = tName === ''; const isDup = !isEmpty && lowerNames.filter(n => n === lower).length > 1; return <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Player {i + 1}<input maxLength={20} value={name} onChange={(e) => setPlayerNames((old) => old.map((n, j) => j === i ? e.target.value : n))} placeholder={`Player ${i + 1}`} style={{ borderColor: (isEmpty || isDup) ? 'var(--danger)' : undefined }} /></label>{(isEmpty || isDup) && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {isEmpty ? 'Please enter a name for every active player.' : 'Player names must be unique.'}</span>}</div>; })}</div><label className="check-row"><input type="checkbox" checked={turnBased} onChange={(e) => setTurnBased(e.target.checked)} /><span><strong>Matching pair earns another turn</strong><small>Turn passes to the next player after a mismatch.</small></span></label></>}
         <div className="setup-summary"><div><span>Game mode</span><strong>{mode === 'solo' ? 'Solo' : `${playerCount} players`}</strong></div><div><span>Board</span><strong>{settings.pairs * 2} cards</strong></div><div><span>Difficulty</span><strong>{difficulty}</strong></div></div><button className="btn primary full-btn" disabled={mode === 'local' && !isValidMultiplayer} onClick={() => startGame(mode)}>{mode === 'solo' ? 'Start challenge' : 'Start game'} <ChevronRight size={17} /></button>{mode === 'solo' && <p className="fine-print"><Info size={13} /> No account needed to play locally.</p>}</div></div></section>}
