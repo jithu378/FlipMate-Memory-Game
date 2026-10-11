@@ -739,11 +739,14 @@ export default function App() {
             <div className="leader-row solo-clean-row table-header">
               <span>Rank</span>
               <span>Player</span>
-              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Best Score</span>
+              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                <span className="desktop-header-label">Best Score</span>
+                <span className="mobile-header-label">Score</span>
+              </span>
               <span style={{ textAlign: 'right' }}>Time</span>
-              <span style={{ textAlign: 'right' }}>Moves</span>
-              <span style={{ textAlign: 'right' }}>Acc.</span>
-              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Date</span>
+              <span className="col-moves" style={{ textAlign: 'right' }}>Moves</span>
+              <span className="col-acc" style={{ textAlign: 'right' }}>Acc.</span>
+              <span className="col-date" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Date</span>
             </div>
             {bests.map((row, i) => {
               const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0;
@@ -755,9 +758,9 @@ export default function App() {
                   </span>
                   <strong style={{ textAlign: 'right' }}>{row.score.toLocaleString()}</strong>
                   <span style={{ textAlign: 'right' }}>{row.seconds ? formatTime(row.seconds) : '—'}</span>
-                  <span style={{ textAlign: 'right' }}>{row.moves || 0}</span>
-                  <span style={{ textAlign: 'right' }}>{acc}%</span>
-                  <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span>
+                  <span className="col-moves" style={{ textAlign: 'right' }}>{row.moves || 0}</span>
+                  <span className="col-acc" style={{ textAlign: 'right' }}>{acc}%</span>
+                  <span className="col-date" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span>
                 </div>
               );
             })}
@@ -786,9 +789,18 @@ export default function App() {
                 <div className="leader-row multi-top-row table-header">
                   <span>Rank</span>
                   <span>Player</span>
-                  <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Total Score</span>
-                  <span style={{ textAlign: 'right' }}>Games</span>
-                  <span style={{ textAlign: 'right' }}>MP Wins</span>
+                  <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    <span className="desktop-header-label">Total Score</span>
+                    <span className="mobile-header-label">Score</span>
+                  </span>
+                  <span style={{ textAlign: 'right' }}>
+                    <span className="desktop-header-label">Games</span>
+                    <span className="mobile-header-label">Gms</span>
+                  </span>
+                  <span style={{ textAlign: 'right' }}>
+                    <span className="desktop-header-label">MP Wins</span>
+                    <span className="mobile-header-label">Wins</span>
+                  </span>
                 </div>
                 {multiTopPlayers.map((row, i) => (
                   <div className="leader-row multi-top-row" key={row.name || i}>

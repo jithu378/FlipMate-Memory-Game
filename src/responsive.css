@@ -135,6 +135,39 @@
   .game-tools {
     flex-wrap: wrap;
   }
+
+  .leaderboard-head {
+    padding: 12px 10px;
+  }
+
+  .multi-leaderboard-container {
+    padding: 0 6px 12px 6px;
+  }
+
+  .leaderboard-list {
+    padding: 0 6px;
+  }
+
+  .match-card-top {
+    padding: 8px 10px;
+  }
+
+  .match-table-head,
+  .match-table-row {
+    padding: 8px 6px;
+    gap: 3px;
+    grid-template-columns: minmax(70px, 1.4fr) 44px 32px 58px;
+  }
+
+  .leader-row.solo-clean-row {
+    grid-template-columns: 36px minmax(70px, 1.3fr) 48px 38px 32px 32px;
+    gap: 3px;
+  }
+
+  .leader-row.multi-top-row {
+    grid-template-columns: 36px minmax(75px, 1.5fr) 52px 34px 38px;
+    gap: 3px;
+  }
 }
 
 @media (max-width: 359px) {
