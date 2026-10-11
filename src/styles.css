@@ -790,11 +790,17 @@ button:disabled {
     padding: 36px 0 24px;
 }
 
-.setup-wrap,
+.setup-wrap {
+    padding: 20px 0 28px;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+}
+
 .game-wrap {
     padding: 24px 0 28px;
     max-width: 930px;
-    margin: 0 auto
+    margin: 0 auto;
 }
 
 .back-link {
@@ -828,13 +834,110 @@ button:disabled {
 }
 
 .setup-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    align-items: start
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
 }
 
-.setup-panel,
+.setup-panel {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px 18px;
+    width: 100%;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.setup-panel.collapsed {
+    padding-bottom: 16px;
+}
+
+.setup-panel-header {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+}
+
+.setup-panel-header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 8px;
+}
+
+.setup-panel-header .panel-heading {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.setup-panel-header .panel-heading-text {
+    min-width: 0;
+}
+
+.setup-panel-summary {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.summary-pill {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--accent);
+    padding: 5px 11px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.expand-chevron {
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    flex-shrink: 0;
+    transition: background .15s ease, color .15s ease;
+}
+
+.setup-panel-header:hover .expand-chevron {
+    color: var(--text);
+    background: var(--line);
+}
+
+.setup-panel.expanded .summary-pill,
+.setup-panel.expanded .setup-panel-summary {
+    display: none;
+}
+
+.setup-expandable-content {
+    display: none;
+    padding-top: 14px;
+    margin-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.setup-expandable-content.open {
+    display: block;
+}
+
 .leaderboard-card,
 .profile-card,
 .settings-card,
@@ -842,14 +945,14 @@ button:disabled {
     border: 1px solid var(--line);
     background: var(--surface);
     border-radius: 17px;
-    padding: 23px
+    padding: 23px;
 }
 
 .panel-heading {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 18px
+    margin-bottom: 14px;
 }
 
 .step-number {
@@ -862,21 +965,23 @@ button:disabled {
     font-weight: 700;
     display: grid;
     place-items: center;
-    flex-shrink: 0
+    flex-shrink: 0;
 }
 
 .panel-heading h3,
 .leaderboard-head h3 {
-    margin: 1px 0 5px;
-    font-size: 14px
+    margin: 1px 0 3px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
 }
 
 .panel-heading p,
 .leaderboard-head p {
-    font-size: 11px;
+    font-size: 11.5px;
     color: var(--muted);
     margin: 0;
-    line-height: 1.5
+    line-height: 1.45;
 }
 
 .difficulty-list {
@@ -944,36 +1049,44 @@ button:disabled {
 }
 
 .theme-heading {
-    margin-top: 27px
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
 }
 
 .theme-options {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px
+    gap: 8px;
 }
 
 .theme-option {
     border: 1px solid var(--line);
     background: var(--surface);
     border-radius: 10px;
-    padding: 11px 8px;
+    padding: 11px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 5px;
+    gap: 6px;
     color: var(--text);
-    font-size: 13px
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.theme-option:last-child {
+    grid-column: 1 / -1;
 }
 
 .theme-option span {
-    font-size: 11px;
-    font-weight: 600
+    font-size: 11.5px;
+    font-weight: 600;
 }
 
 .theme-option.selected {
     border-color: var(--accent);
-    background: var(--accent-soft)
+    background: var(--accent-soft);
 }
 
 .field-label {
@@ -1062,25 +1175,38 @@ button:disabled {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    padding: 15px 0;
-    margin-top: 14px;
-    border-top: 1px solid var(--line)
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 10px;
+    margin: 14px 0 12px;
+    text-align: center;
 }
 
 .setup-summary span {
     font-size: 10px;
     color: var(--muted);
     display: block;
-    margin-bottom: 5px
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
 }
 
 .setup-summary strong {
-    font-size: 11px
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 700;
+    display: block;
 }
 
 .full-btn {
     width: 100%;
-    margin-top: 4px
+    margin-top: 2px;
+    padding: 13px 18px;
+    font-size: 13.5px;
+    font-weight: 700;
+    justify-content: center;
 }
 
 .fine-print {
@@ -1088,9 +1214,9 @@ button:disabled {
     align-items: center;
     justify-content: center;
     gap: 5px;
-    font-size: 10px;
+    font-size: 10.5px;
     color: var(--muted);
-    margin: 13px 0 0
+    margin: 11px 0 0;
 }
 
 .game-wrap {
@@ -2700,30 +2826,35 @@ button:disabled {
 
 @media (min-width: 801px) {
     .setup-wrap {
-        max-width: 1040px;
+        max-width: 640px;
         padding-top: 24px;
         padding-bottom: 32px;
+        margin: 0 auto;
     }
 
     .page-title {
-        margin: 14px 0 22px;
+        margin: 12px 0 18px;
     }
 
     .setup-grid {
-        gap: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        width: 100%;
     }
 
     .setup-panel {
-        padding: 32px 34px;
+        padding: 20px 22px;
+        border-radius: 16px;
     }
 
     .panel-heading {
-        margin-bottom: 22px;
+        margin-bottom: 14px;
     }
 
     .panel-heading h3 {
-        font-size: 17px;
-        margin-bottom: 4px;
+        font-size: 15.5px;
+        margin-bottom: 2px;
     }
 
     .panel-heading p {
@@ -2731,16 +2862,16 @@ button:disabled {
     }
 
     .step-number {
-        width: 30px;
-        height: 30px;
-        font-size: 12px;
-        border-radius: 10px;
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+        border-radius: 9px;
     }
 
     .difficulty-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        gap: 8px;
     }
 
     .difficulty-option:last-child {
@@ -2748,66 +2879,61 @@ button:disabled {
     }
 
     .difficulty-option {
-        padding: 13px 14px;
-        gap: 12px;
+        padding: 10px 12px;
+        gap: 10px;
     }
 
     .difficulty-label strong {
-        font-size: 13px;
+        font-size: 12.5px;
     }
 
     .difficulty-label small,
     .difficulty-size {
-        font-size: 11px;
+        font-size: 10.5px;
     }
 
     .radio-dot {
-        width: 15px;
-        height: 15px;
-    }
-
-    .theme-heading {
-        margin-top: 28px;
-        margin-bottom: 16px;
+        width: 14px;
+        height: 14px;
     }
 
     .theme-options {
-        gap: 10px;
+        gap: 8px;
     }
 
     .theme-option {
-        padding: 14px 12px;
-        font-size: 14px;
+        padding: 10px 12px;
+        font-size: 13px;
     }
 
     .theme-option span {
-        font-size: 12px;
+        font-size: 11.5px;
     }
 
     .field-label {
         font-size: 12px;
-        gap: 8px;
-        margin-bottom: 20px;
+        gap: 7px;
+        margin-bottom: 13px;
     }
 
     .field-label input {
-        padding: 14px 15px;
-        font-size: 14px;
+        padding: 11px 12px;
+        font-size: 13px;
     }
 
     .player-count {
         gap: 8px;
-        margin-bottom: 20px;
+        margin-bottom: 14px;
     }
 
     .count-btn {
-        padding: 12px 8px;
-        font-size: 12px;
+        padding: 10px 8px;
+        font-size: 11.5px;
     }
 
     .check-row {
-        padding: 16px 0 6px;
-        gap: 12px;
+        padding: 12px 0 4px;
+        gap: 10px;
     }
 
     .check-row strong {
@@ -2815,28 +2941,28 @@ button:disabled {
     }
 
     .check-row small {
-        font-size: 11px;
-        margin-top: 5px;
+        font-size: 10.5px;
+        margin-top: 3px;
     }
 
     .setup-summary {
-        padding: 20px 0;
-        margin-top: 24px;
-        gap: 12px;
+        padding: 11px 12px;
+        margin: 12px 0;
+        gap: 8px;
     }
 
     .setup-summary span {
-        font-size: 11px;
-        margin-bottom: 6px;
+        font-size: 10px;
+        margin-bottom: 3px;
     }
 
     .setup-summary strong {
-        font-size: 13px;
+        font-size: 12.5px;
     }
 
     .full-btn {
-        padding: 15px;
-        font-size: 14px;
+        padding: 13px;
+        font-size: 13.5px;
     }
 
 }
@@ -2893,12 +3019,40 @@ button:disabled {
         margin: 0
     }
 
+    .setup-wrap {
+        max-width: 580px;
+        margin: 0 auto;
+        padding: 16px 0 24px;
+    }
+
     .setup-grid {
-        grid-template-columns: 1fr
+        grid-template-columns: 1fr;
+        gap: 14px;
+        width: 100%;
     }
 
     .setup-panel {
-        padding: 20px
+        padding: 20px 18px;
+        border-radius: 16px;
+    }
+
+    .setup-wrap .back-link {
+        margin-bottom: 8px;
+    }
+
+    .setup-wrap .page-title {
+        margin: 10px 0 16px;
+    }
+
+    .setup-wrap .page-title h1 {
+        font-size: clamp(26px, 6vw, 32px);
+        margin: 4px 0 6px;
+        letter-spacing: -1px;
+    }
+
+    .setup-wrap .page-title p {
+        font-size: 12.5px;
+        line-height: 1.45;
     }
 
     .quick-stats {
@@ -3182,7 +3336,55 @@ button:disabled {
     }
 
     .setup-panel {
-        padding: 17px
+        padding: 17px;
+    }
+
+    .setup-panel-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "heading chevron"
+            "summary summary";
+        row-gap: 8px;
+        column-gap: 8px;
+        align-items: center;
+    }
+
+    .setup-panel-header .panel-heading {
+        grid-area: heading;
+        margin-bottom: 0;
+        min-width: 0;
+    }
+
+    .setup-panel-header .panel-heading h3 {
+        white-space: nowrap;
+    }
+
+    .setup-panel-header .panel-heading-desc {
+        white-space: normal;
+        line-height: 1.35;
+    }
+
+    .setup-panel-header .expand-chevron {
+        grid-area: chevron;
+        justify-self: end;
+        align-self: center;
+    }
+
+    .setup-panel-header .setup-panel-summary {
+        grid-area: summary;
+        width: 100%;
+        margin-left: 0;
+        display: flex;
+    }
+
+    .summary-pill {
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.35;
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 8px;
     }
 
     .player-fields {
@@ -3607,6 +3809,110 @@ button:disabled {
         justify-self: start;
         padding: 6px 10px;
         font-size: 10px;
+    }
+
+    .setup-wrap {
+        padding: 10px 0 20px;
+    }
+
+    .setup-wrap .page-title h1 {
+        font-size: 24px;
+    }
+
+    .setup-panel {
+        padding: 14px 13px;
+        border-radius: 14px;
+    }
+
+    .setup-panel.collapsed {
+        padding-bottom: 14px;
+    }
+
+    .summary-pill {
+        max-width: 100%;
+        font-size: 10px;
+        padding: 4px 9px;
+    }
+
+    .expand-chevron {
+        width: 28px;
+        height: 28px;
+    }
+
+    .setup-expandable-content {
+        padding-top: 12px;
+        margin-top: 12px;
+    }
+
+    .panel-heading {
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .panel-heading h3 {
+        font-size: 13.5px;
+    }
+
+    .step-number {
+        width: 25px;
+        height: 25px;
+        font-size: 10.5px;
+        border-radius: 8px;
+    }
+
+    .difficulty-option {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .difficulty-label strong {
+        font-size: 11.5px;
+    }
+
+    .theme-heading {
+        margin-top: 16px;
+        padding-top: 14px;
+    }
+
+    .theme-options {
+        gap: 6px;
+    }
+
+    .theme-option {
+        padding: 8px 8px;
+        font-size: 11px;
+    }
+
+    .theme-option span {
+        font-size: 10.5px;
+    }
+
+    .field-label {
+        margin-bottom: 10px;
+    }
+
+    .field-label input {
+        padding: 9px 10px;
+        font-size: 12.5px;
+    }
+
+    .setup-summary {
+        padding: 10px 6px;
+        gap: 4px;
+        margin: 10px 0 12px;
+    }
+
+    .setup-summary span {
+        font-size: 8.5px;
+    }
+
+    .setup-summary strong {
+        font-size: 11px;
+    }
+
+    .full-btn {
+        padding: 11px 14px;
+        font-size: 13px;
     }
 }
 
