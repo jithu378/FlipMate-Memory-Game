@@ -1056,7 +1056,7 @@ button:disabled {
 
 .theme-options {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -1073,10 +1073,6 @@ button:disabled {
     font-size: 13px;
     cursor: pointer;
     transition: border-color .15s ease, background .15s ease;
-}
-
-.theme-option:last-child {
-    grid-column: 1 / -1;
 }
 
 .theme-option span {
@@ -1370,7 +1366,7 @@ button:disabled {
     min-width: 0;
     overflow: hidden;
     perspective: 700px;
-    transition: transform .15s, border-color .15s, background .15s;
+    transition: transform .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
     display: grid;
     place-items: center;
     color: var(--text)
@@ -1387,35 +1383,39 @@ button:disabled {
     inset: 0;
     display: grid;
     place-items: center;
+    border-radius: inherit;
     backface-visibility: hidden;
     transition: transform .22s ease, opacity .18s
 }
 
 .card-back {
     transform: rotateY(0);
-    opacity: 1
+    opacity: 1;
+    background: var(--accent-soft);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent)
 }
 
 .card-mark {
-    width: 28px;
-    height: 28px;
+    width: clamp(16px, 44%, 30px);
+    aspect-ratio: 1;
     display: grid;
     place-items: center;
-    border-radius: 9px;
-    background: var(--surface);
-    color: var(--accent);
-    font-family: Manrope, sans-serif;
-    font-weight: 800;
-    font-size: 17px;
-    border: 1px solid var(--line)
+    color: var(--accent)
 }
 
 .card-front {
-    font-size: clamp(18px, 3vw, 30px);
     transform: rotateY(180deg);
     opacity: 0;
     background: var(--surface);
     color: var(--accent)
+}
+
+.card-icon {
+    width: clamp(17px, 48%, 34px);
+    height: auto;
+    max-height: 34px;
+    stroke-width: 1.8
 }
 
 .memory-card.revealed {
@@ -1436,12 +1436,24 @@ button:disabled {
 .memory-card.matched {
     border-color: var(--green);
     background: var(--green-soft);
-    color: var(--green)
+    color: var(--green);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 24%, transparent);
+    animation: card-match .24s ease-out
+}
+
+.memory-card.matched:disabled {
+    opacity: 1
 }
 
 .memory-card.matched .card-front {
     background: var(--green-soft);
     color: var(--green)
+}
+
+@keyframes card-match {
+    0% { transform: scale(.97) }
+    70% { transform: scale(1.025) }
+    100% { transform: scale(1) }
 }
 
 .card-grid.dense {
@@ -1453,21 +1465,9 @@ button:disabled {
     border-radius: 8px
 }
 
-.card-grid.dense .card-mark {
-    width: 23px;
-    height: 23px;
-    font-size: 14px
-}
-
 .card-grid.extra-dense {
     gap: 5px;
     padding: 8px
-}
-
-.card-grid.extra-dense .card-mark {
-    width: 18px;
-    height: 18px;
-    font-size: 12px
 }
 
 .card-grid.extra-dense .memory-card {
@@ -3442,36 +3442,14 @@ button:disabled {
         border-radius: 8px
     }
 
-    .card-mark {
-        width: 23px;
-        height: 23px;
-        font-size: 14px
-    }
-
-    .card-front {
-        font-size: clamp(16px, 6vw, 26px)
-    }
-
     .card-grid.dense {
         gap: 4px;
         padding: 6px
     }
 
-    .card-grid.dense .card-mark {
-        width: 18px;
-        height: 18px;
-        font-size: 11px
-    }
-
     .card-grid.extra-dense {
         gap: 3px;
         padding: 5px
-    }
-
-    .card-grid.extra-dense .card-mark {
-        width: 14px;
-        height: 14px;
-        font-size: 9px
     }
 
     .game-tools {
@@ -4274,11 +4252,6 @@ button:disabled {
         padding: var(--board-padding);
     }
 
-    .immersive-mode .card-grid.extra-dense .card-mark {
-        width: clamp(12px, 5vw, 18px);
-        height: clamp(12px, 5vw, 18px);
-        font-size: clamp(9px, 3.2vw, 12px);
-    }
 }
 
 .about-sections {
