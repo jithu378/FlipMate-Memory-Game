@@ -89,6 +89,8 @@ export default function App() {
   const [roomCode, setRoomCode] = useState('');
   const [roomCreated, setRoomCreated] = useState(false);
   const [customName, setCustomName] = useState(persisted.displayName || 'Player');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameInput, setEditNameInput] = useState(persisted.displayName || 'Player');
   const [leaderboardFilter, setLeaderboardFilter] = useState(() => {
     const { tab, diff } = getLeaderboardParams();
     if (tab === 'solo' && diff && Object.keys(DIFFICULTIES).includes(diff)) {
@@ -1067,7 +1069,247 @@ export default function App() {
           </div>
         ));
       })()}</div> : <div className="empty-state"><span className="empty-icon"><Users size={24} /></span><h3>No matches yet</h3><p>Complete a multiplayer match and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
-      {page === 'profile' && <section className="content-page focus-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PROGRESS</span><h1>Player profile</h1><p>Your stats and records on this device.</p></div><div className="profile-card"><div className="profile-identity"><div className="profile-avatar">{(customName.trim()[0] || 'P').toUpperCase()}</div><div><h2>{customName || 'Player'}</h2><p>MindFlip player <span className="local-badge">Local profile</span></p></div></div><label className="field-label profile-name-field">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Your name" /></label><div className="profile-stats"><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div><div><small>Best solo score</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div><p className="profile-help"><Info size={15} /> Your local profile is saved in this browser. Sign-in and cross-device syncing can be added with Supabase.</p></div></section>}
+      {page === 'profile' && (() => {
+        const playerNameTrimmed = (customName || '').trim();
+        const playerMultiWins = playerNameTrimmed ? (persisted.multiplayerWins?.[playerNameTrimmed] || 0) : 0;
+        
+        // Personal records from valid completed solo games only
+        const completedSoloGames = (persisted.history || []).filter(r => {
+          if (!r || r.mode !== 'solo') return false;
+          const diffConfig = DIFFICULTIES[r.difficulty];
+          if (!diffConfig) return false;
+          const targetPairs = diffConfig.pairs;
+          if (typeof r.completedPairs === 'number') {
+            return r.completedPairs >= targetPairs && (typeof r.moves === 'number' ? r.moves >= targetPairs : true);
+          }
+          return typeof r.moves === 'number' && r.moves >= targetPairs && (r.score > 0);
+        });
+
+        const bestScoreRecord = completedSoloGames.length
+          ? [...completedSoloGames].sort((a, b) => {
+              if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+              return (a.seconds || Infinity) - (b.seconds || Infinity);
+            })[0]
+          : null;
+
+        const validTimeGames = completedSoloGames.filter(r => typeof r.seconds === 'number' && r.seconds > 0);
+        const fastestRecord = validTimeGames.length
+          ? [...validTimeGames].sort((a, b) => {
+              if (a.seconds !== b.seconds) return a.seconds - b.seconds;
+              return (b.score || 0) - (a.score || 0);
+            })[0]
+          : null;
+
+        const validMovesGames = completedSoloGames.filter(r => {
+          const minPairs = DIFFICULTIES[r.difficulty]?.pairs || 1;
+          return typeof r.moves === 'number' && r.moves >= minPairs;
+        });
+        const fewestMovesRecord = validMovesGames.length
+          ? [...validMovesGames].sort((a, b) => {
+              if (a.moves !== b.moves) return a.moves - b.moves;
+              return (a.seconds || Infinity) - (b.seconds || Infinity);
+            })[0]
+          : null;
+
+        // Recent activity: top 3 most recent games from history
+        const recentGames = (persisted.history || []).slice(0, 3);
+
+        return (
+          <section className="content-page focus-page">
+            <button className="back-link" onClick={() => nav('home')}>
+              <ArrowLeft size={16} /> Back home
+            </button>
+            <div className="page-title">
+              <span className="eyebrow">YOUR PROGRESS</span>
+              <h1>Player profile</h1>
+              <p>Your stats, records, and activity on this device.</p>
+            </div>
+
+            <div className="profile-dashboard">
+              {/* Profile Header */}
+              <div className="profile-header-card">
+                <div className="profile-identity">
+                  <div className="profile-avatar">
+                    {((isEditingName ? editNameInput : customName).trim()[0] || 'P').toUpperCase()}
+                  </div>
+                  <div className="profile-user-info">
+                    <div className="profile-name-row">
+                      <h2>{customName || 'Player'}</h2>
+                      {!isEditingName && (
+                        <button
+                          type="button"
+                          className="profile-edit-btn"
+                          onClick={() => {
+                            setEditNameInput(customName);
+                            setIsEditingName(true);
+                          }}
+                          aria-label="Edit display name"
+                        >
+                          <Pencil size={13} />
+                          <span>Edit name</span>
+                        </button>
+                      )}
+                    </div>
+                    <p className="profile-subtitle">MindFlip Player</p>
+                  </div>
+                </div>
+
+                {isEditingName ? (
+                  <form
+                    className="profile-edit-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const trimmed = editNameInput.trim();
+                      const finalName = trimmed || 'Player';
+                      setCustomName(finalName);
+                      setIsEditingName(false);
+                      toast('Display name updated.');
+                    }}
+                  >
+                    <div className="profile-input-group">
+                      <input
+                        value={editNameInput}
+                        maxLength={20}
+                        autoFocus
+                        onChange={(e) => setEditNameInput(e.target.value)}
+                        placeholder="Enter your name"
+                        aria-label="Display name"
+                      />
+                      <div className="profile-form-actions">
+                        <button type="submit" className="btn primary small-btn">
+                          <Check size={13} /> Save
+                        </button>
+                        <button
+                          type="button"
+                          className="btn secondary small-btn"
+                          onClick={() => {
+                            setEditNameInput(customName);
+                            setIsEditingName(false);
+                          }}
+                        >
+                          <X size={13} /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                    <span className="profile-input-hint">Used in your solo records and match results (up to 20 characters).</span>
+                  </form>
+                ) : null}
+              </div>
+
+              {/* 4 Statistics Cards */}
+              <div className="profile-stats-grid">
+                <div className="profile-stat-box">
+                  <small>Games Played</small>
+                  <strong>{persisted.gamesPlayed || 0}</strong>
+                </div>
+                <div className="profile-stat-box">
+                  <small>Pairs Matched</small>
+                  <strong>{persisted.totalPairs || 0}</strong>
+                </div>
+                <div className="profile-stat-box">
+                  <small>Best Solo Score</small>
+                  <strong>{bestScoreRecord ? bestScoreRecord.score.toLocaleString() : '—'}</strong>
+                </div>
+                <div className="profile-stat-box">
+                  <small>Multiplayer Wins</small>
+                  <strong>{playerMultiWins}</strong>
+                </div>
+              </div>
+
+              {/* Personal Records & Recent Activity side-by-side on desktop */}
+              <div className="profile-sections-grid">
+                {/* Personal Records */}
+                <div className="profile-panel">
+                  <div className="profile-panel-head">
+                    <Trophy size={16} className="panel-icon" />
+                    <h3>Personal Records</h3>
+                  </div>
+                  <div className="records-list">
+                    <div className="record-item">
+                      <div className="record-label-group">
+                        <span className="record-name">Best Solo Score</span>
+                        {bestScoreRecord?.difficulty && (
+                          <span className="record-diff">{bestScoreRecord.difficulty}</span>
+                        )}
+                      </div>
+                      <strong className="record-value">
+                        {bestScoreRecord ? bestScoreRecord.score.toLocaleString() : '—'}
+                      </strong>
+                    </div>
+                    <div className="record-item">
+                      <div className="record-label-group">
+                        <span className="record-name">Fastest Completion</span>
+                        {fastestRecord?.difficulty && (
+                          <span className="record-diff">{fastestRecord.difficulty}</span>
+                        )}
+                      </div>
+                      <strong className="record-value">
+                        {fastestRecord ? formatTime(fastestRecord.seconds) : '—'}
+                      </strong>
+                    </div>
+                    <div className="record-item">
+                      <div className="record-label-group">
+                        <span className="record-name">Fewest Moves</span>
+                        {fewestMovesRecord?.difficulty && (
+                          <span className="record-diff">{fewestMovesRecord.difficulty}</span>
+                        )}
+                      </div>
+                      <strong className="record-value">
+                        {fewestMovesRecord ? fewestMovesRecord.moves : '—'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="profile-panel">
+                  <div className="profile-panel-head">
+                    <Clock3 size={16} className="panel-icon" />
+                    <h3>Recent Activity</h3>
+                  </div>
+                  {recentGames.length ? (
+                    <div className="activity-list">
+                      {recentGames.map((game, idx) => {
+                        const isSolo = game.mode === 'solo';
+                        return (
+                          <div key={game.id || idx} className="activity-row">
+                            <div className="activity-primary">
+                              <span className="activity-mode">
+                                {isSolo ? 'Solo' : 'Multiplayer'}
+                                {game.difficulty ? ` · ${game.difficulty}` : ''}
+                              </span>
+                              <span className="activity-date">
+                                {game.date ? new Date(game.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent'}
+                              </span>
+                            </div>
+                            <div className="activity-secondary">
+                              <span className="activity-score">
+                                {typeof game.score === 'number' ? `${game.score.toLocaleString()} pts` : '—'}
+                              </span>
+                              <span className="activity-time">
+                                {game.seconds ? formatTime(game.seconds) : '—'}
+                              </span>
+                              {!isSolo && game.matchResult && (
+                                <span className={`activity-result ${game.matchResult}`}>
+                                  {game.matchResult === 'winner' ? 'Win' : game.matchResult === 'tie' ? 'Tie' : 'Loss'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="profile-empty-state">
+                      <p>No games played yet. Finish a match to see your activity here.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {page === 'settings' && <section className="content-page focus-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT COMFORTABLE</span><h1>Settings</h1><p>A few small things to make MindFlip feel like yours.</p></div><div className="settings-card"><div className="setting-row"><span className="setting-icon"><dark-icon>{dark ? <Moon size={19} /> : <Sun size={19} />}</dark-icon></span><div className="setting-copy"><strong>Appearance</strong><small>Choose a theme that's comfortable for you.</small></div><button className="toggle-pill" onClick={() => setDark((v) => !v)}>{dark ? 'Dark' : 'Light'}<span className={dark ? 'toggle-knob on' : 'toggle-knob'} /></button></div><div className="setting-row"><span className="setting-icon">{sound ? <Volume2 size={19} /> : <VolumeX size={19} />}</span><div className="setting-copy"><strong>Sound effects</strong><small>Play a subtle sound when you find a match.</small></div><button className={sound ? 'switch on' : 'switch'} aria-label="Toggle sound" onClick={() => setSound((v) => !v)}><span /></button></div><div className="setting-row"><span className="setting-icon"><BarChart3 size={19} /></span><div className="setting-copy"><strong>Local data</strong><small>Clear this browser's saved results and preferences.</small></div><button className="btn danger-btn" onClick={() => { if (window.confirm('Clear local game history and saved statistics?')) { const clean = { displayName: customName }; setPersisted(clean); saveStore({ ...clean, dark, sound }); toast('Local history cleared.'); } }}><Trash2 size={14} aria-hidden="true" /> Clear data</button></div><div className="settings-foot"><Info size={15} /><p>MindFlip is a work-in-progress starter. Online rooms, accounts, and global rankings require Supabase configuration before they can be used across devices.</p></div></div></section>}
 
