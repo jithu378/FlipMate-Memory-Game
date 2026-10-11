@@ -179,10 +179,14 @@ export default function App() {
         const playerStats = [];
         for (let i = 0; i < playerCount; i++) {
           if (playerMoves[i] > 0 || scores[i] > 0) {
+            const calculatedScore = Math.max(0, Math.round(scores[i] * 100 * settings.multiplier - playerMoves[i] * 5 - seconds));
+            const calculatedAcc = playerMoves[i] ? Math.round((scores[i] / playerMoves[i]) * 100) : 0;
             playerStats.push({
               index: i,
-              score: Math.max(0, Math.round(scores[i] * 100 * settings.multiplier - playerMoves[i] * 5 - seconds)),
-              pairs: scores[i]
+              score: calculatedScore,
+              pairs: scores[i] || 0,
+              accuracy: calculatedAcc,
+              moves: playerMoves[i] || 0
             });
           }
         }
@@ -192,8 +196,10 @@ export default function App() {
         
         if (playerStats.length > 0) {
           playerStats.sort((a, b) => {
+            if (b.pairs !== a.pairs) return b.pairs - a.pairs;
             if (b.score !== a.score) return b.score - a.score;
-            return b.pairs - a.pairs;
+            if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+            return a.moves - b.moves;
           });
           
           if (playerStats.length === 1) {
@@ -201,7 +207,7 @@ export default function App() {
           } else {
             const first = playerStats[0];
             const second = playerStats[1];
-            if (first.score === second.score && first.pairs === second.pairs) {
+            if (first.pairs === second.pairs && first.score === second.score && first.accuracy === second.accuracy && first.moves === second.moves) {
               isTie = true;
             } else {
               winnerIndex = first.index;
@@ -393,14 +399,19 @@ export default function App() {
     });
 
     const multiPlayerStatsMap = new window.Map();
+    const seenMatchPlayer = new Set();
     cleanHistory.filter(r => r.mode !== 'solo').forEach(r => {
       const pName = (r.name || 'Player').trim();
+      const matchKey = `${r.sessionId || `legacy-${r.date}`}-${pName}`;
+      if (seenMatchPlayer.has(matchKey)) return;
+      seenMatchPlayer.add(matchKey);
+
       let stat = multiPlayerStatsMap.get(pName);
       if (!stat) {
         stat = { name: pName, totalScore: 0, gamesPlayed: 0, completedPairs: 0, moves: 0, wins: multiWins[pName] || 0 };
         multiPlayerStatsMap.set(pName, stat);
       }
-      stat.totalScore += r.score;
+      stat.totalScore += r.score || 0;
       stat.gamesPlayed += 1;
       stat.completedPairs += r.completedPairs || 0;
       stat.moves += r.moves || 0;
@@ -409,9 +420,31 @@ export default function App() {
     let multiTopPlayers = Array.from(multiPlayerStatsMap.values());
     multiTopPlayers.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.completedPairs !== a.completedPairs) return b.completedPairs - a.completedPairs;
       if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      return b.completedPairs - a.completedPairs;
+      const accA = a.moves ? (a.completedPairs / a.moves) : 0;
+      const accB = b.moves ? (b.completedPairs / b.moves) : 0;
+      if (accA !== accB) return accB - accA;
+      return 0;
     });
+
+    let currentMultiRank = 1;
+    for (let i = 0; i < multiTopPlayers.length; i++) {
+      if (i > 0) {
+        const prev = multiTopPlayers[i - 1];
+        const curr = multiTopPlayers[i];
+        const prevAcc = prev.moves ? (prev.completedPairs / prev.moves) : 0;
+        const currAcc = curr.moves ? (curr.completedPairs / curr.moves) : 0;
+        const isTie = prev.wins === curr.wins &&
+                      prev.completedPairs === curr.completedPairs &&
+                      prev.totalScore === curr.totalScore &&
+                      prevAcc === currAcc;
+        if (!isTie) {
+          currentMultiRank = i + 1;
+        }
+      }
+      multiTopPlayers[i].displayRank = currentMultiRank;
+    }
 
     const multiRecords = cleanHistory.filter(r => r.mode !== 'solo').slice(0, 100);
     const multiMatchesMap = new window.Map();
@@ -422,6 +455,60 @@ export default function App() {
       }
       multiMatchesMap.get(k).records.push(r);
     });
+
+    const compareMatchPlayers = (a, b) => {
+      const aPairs = a.completedPairs ?? 0;
+      const bPairs = b.completedPairs ?? 0;
+      if (bPairs !== aPairs) return bPairs - aPairs;
+
+      const aScore = a.score ?? 0;
+      const bScore = b.score ?? 0;
+      if (bScore !== aScore) return bScore - aScore;
+
+      const aAcc = (a.moves && a.completedPairs != null) ? (a.completedPairs / a.moves) : (a.moves ? 0 : -1);
+      const bAcc = (b.moves && b.completedPairs != null) ? (b.completedPairs / b.moves) : (b.moves ? 0 : -1);
+      if (bAcc !== aAcc) return bAcc - aAcc;
+
+      const aMoves = a.moves ?? Infinity;
+      const bMoves = b.moves ?? Infinity;
+      if (aMoves !== bMoves) return aMoves - bMoves;
+
+      return 0;
+    };
+
+    const isMatchPlayerTie = (a, b) => {
+      const aPairs = a.completedPairs ?? 0;
+      const bPairs = b.completedPairs ?? 0;
+      if (aPairs !== bPairs) return false;
+
+      const aScore = a.score ?? 0;
+      const bScore = b.score ?? 0;
+      if (aScore !== bScore) return false;
+
+      const aAcc = (a.moves && a.completedPairs != null) ? (a.completedPairs / a.moves) : (a.moves ? 0 : -1);
+      const bAcc = (b.moves && b.completedPairs != null) ? (b.completedPairs / b.moves) : (b.moves ? 0 : -1);
+      if (aAcc !== bAcc) return false;
+
+      const aMoves = a.moves ?? Infinity;
+      const bMoves = b.moves ?? Infinity;
+      if (aMoves !== bMoves) return false;
+
+      return true;
+    };
+
+    multiMatchesMap.forEach((match) => {
+      const sortedRecords = [...match.records].sort(compareMatchPlayers);
+      let currentRank = 1;
+      match.records = sortedRecords.map((row, idx, arr) => {
+        if (idx > 0) {
+          if (!isMatchPlayerTie(arr[idx - 1], row)) {
+            currentRank = idx + 1;
+          }
+        }
+        return { ...row, calculatedRank: currentRank };
+      });
+    });
+
     const multiMatches = Array.from(multiMatchesMap.values());
 
     let hList = [...cleanHistory];
@@ -705,7 +792,7 @@ export default function App() {
                 </div>
                 {multiTopPlayers.map((row, i) => (
                   <div className="leader-row multi-top-row" key={row.name || i}>
-                    <span className="rank-cell">{renderRankBadge(i + 1)}</span>
+                    <span className="rank-cell">{renderRankBadge(row.displayRank ?? (i + 1))}</span>
                     <span className="leader-player-clean" title={row.name}>
                       <span className="player-display-name">{row.name || 'Player'}</span>
                     </span>
@@ -753,12 +840,14 @@ export default function App() {
                         <span style={{ textAlign: 'center' }}>Result</span>
                       </div>
                       {match.records.map((row, rIdx) => {
-                        const isWin = row.matchResult === 'winner';
-                        const isTie = row.matchResult === 'tie';
+                        const rank = row.calculatedRank ?? (rIdx + 1);
+                        const hasWinnerTie = match.records.filter(r => (r.calculatedRank ?? 1) === 1).length > 1;
+                        const isWin = rank === 1 && !hasWinnerTie;
+                        const isDraw = rank === 1 && hasWinnerTie;
                         return (
                           <div className={`match-table-row ${isWin ? 'is-winner' : ''}`} key={row.id || `${match.id}-${rIdx}`}>
                             <span className="match-player-name">{row.name || 'Player'}</span>
-                            <span className="match-player-score">{row.score.toLocaleString()}</span>
+                            <span className="match-player-score">{(row.score ?? 0).toLocaleString()}</span>
                             <span className="match-player-moves">{row.moves ?? '—'}</span>
                             <span className="match-player-result">
                               {isWin && (
@@ -766,11 +855,20 @@ export default function App() {
                                   <Trophy size={11} strokeWidth={2.4} aria-hidden="true" /> Winner
                                 </span>
                               )}
-                              {isTie && <span className="result-pill draw">Draw</span>}
-                              {!isWin && !isTie && (
-                                <span className="result-pill neutral">
-                                  {row.matchResult === 'loser' ? 'Loser' : '—'}
-                                </span>
+                              {isDraw && (
+                                <span className="result-pill draw">Draw</span>
+                              )}
+                              {!isWin && !isDraw && rank === 2 && (
+                                <span className="result-pill second">2nd</span>
+                              )}
+                              {!isWin && !isDraw && rank === 3 && (
+                                <span className="result-pill third">3rd</span>
+                              )}
+                              {!isWin && !isDraw && rank === 4 && (
+                                <span className="result-pill fourth">4th</span>
+                              )}
+                              {!isWin && !isDraw && rank > 4 && (
+                                <span className="result-pill neutral">{rank}th</span>
                               )}
                             </span>
                           </div>

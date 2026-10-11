@@ -1810,6 +1810,24 @@ button:disabled {
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
+.result-pill.second {
+    background: rgba(148, 163, 184, 0.18);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.result-pill.third {
+    background: rgba(217, 119, 6, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(217, 119, 6, 0.35);
+}
+
+.result-pill.fourth {
+    background: var(--surface-2);
+    color: var(--muted);
+    border: 1px solid var(--line);
+}
+
 .result-pill.draw {
     background: var(--surface-2);
     color: var(--text);
