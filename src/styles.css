@@ -2901,10 +2901,6 @@ button:disabled {
         padding: 20px
     }
 
-    .players-panel {
-        order: -1
-    }
-
     .quick-stats {
         margin-bottom: 50px
     }
