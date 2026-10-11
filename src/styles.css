@@ -2265,87 +2265,116 @@ button:disabled {
     font-size: 13px;
 }
 
+.settings-container {
+    max-width: 680px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.settings-container .back-link {
+    margin-bottom: 20px;
+}
+
+.settings-container .page-title {
+    margin: 0 0 22px;
+}
+
 .settings-card {
-    max-width: 720px;
-    padding: 5px 23px
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 6px 22px;
 }
 
 .setting-row {
     display: flex;
     align-items: center;
-    gap: 13px;
-    padding: 19px 0;
-    border-bottom: 1px solid var(--line)
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
 }
 
 .setting-row:last-of-type {
-    border-bottom: 0
+    border-bottom: 0;
 }
 
 .setting-icon {
-    width: 39px;
-    height: 39px;
-    border-radius: 11px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
     background: var(--surface-2);
     color: var(--accent);
     display: grid;
     place-items: center;
-    flex-shrink: 0
+    flex-shrink: 0;
 }
 
 .setting-copy {
     flex: 1;
-    min-width: 0
+    min-width: 0;
 }
 
 .setting-copy strong {
     display: block;
-    font-size: 12px;
-    margin-bottom: 5px
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
 }
 
 .setting-copy small {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--muted);
-    line-height: 1.5;
-    display: block
+    line-height: 1.45;
+    display: block;
 }
 
 .toggle-pill {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     background: var(--surface-2);
     color: var(--text);
     border: 1px solid var(--line);
     border-radius: 20px;
-    padding: 5px 8px 5px 12px;
-    font-size: 10px;
-    font-weight: 700
+    padding: 5px 9px 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+    flex-shrink: 0;
+}
+
+.toggle-pill:hover {
+    border-color: var(--accent);
 }
 
 .toggle-knob {
-    width: 16px;
-    height: 16px;
-    background: #b8b8c8;
+    width: 14px;
+    height: 14px;
+    background: var(--muted);
     border-radius: 50%;
-    display: block
+    display: block;
+    transition: background .15s ease;
 }
 
 .toggle-knob.on {
-    background: var(--accent)
+    background: var(--accent);
 }
 
 .switch {
-    width: 40px;
-    height: 23px;
+    width: 38px;
+    height: 22px;
     border: 0;
-    border-radius: 15px;
-    background: #b9bac8;
-    padding: 3px;
+    border-radius: 14px;
+    background: var(--line);
+    padding: 2.5px;
     display: flex;
     align-items: center;
-    flex-shrink: 0
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background .15s ease;
 }
 
 .switch span {
@@ -2353,40 +2382,156 @@ button:disabled {
     height: 17px;
     background: white;
     border-radius: 50%;
-    transition: transform .15s
+    transition: transform .15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
 }
 
 .switch.on {
-    background: var(--accent)
+    background: var(--accent);
 }
 
 .switch.on span {
-    transform: translateX(17px)
+    transform: translateX(16px);
 }
 
 .danger-btn {
-    border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
     color: var(--danger);
-    background: var(--surface);
-    padding: 9px 11px;
-    font-size: 10px
+    background: var(--surface-2);
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 9px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all .15s ease;
+}
+
+.danger-btn:hover {
+    background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+    border-color: var(--danger);
+}
+
+.danger-solid-btn {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+}
+
+.danger-solid-btn:hover {
+    background: color-mix(in srgb, var(--danger) 85%, black);
 }
 
 .settings-foot {
     display: flex;
+    align-items: flex-start;
     gap: 9px;
     color: var(--muted);
-    font-size: 10px;
-    line-height: 1.6;
-    padding: 14px 0
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 13px 0 11px;
+    border-top: 1px solid var(--line);
+    margin-top: 2px;
 }
 
 .settings-foot svg {
-    flex-shrink: 0
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--accent);
 }
 
 .settings-foot p {
-    margin: 0
+    margin: 0;
+}
+
+/* Clear Data Confirmation Modal */
+.confirm-modal {
+    position: relative;
+    max-width: 440px;
+    width: 100%;
+    border-radius: 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.confirm-modal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.confirm-modal-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.confirm-modal-header h3 {
+    margin: 0 0 3px;
+    font-family: Manrope, sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.confirm-modal-subtitle {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.confirm-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.confirm-modal-body p {
+    margin: 0;
+}
+
+.confirm-delete-list {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.confirm-preserve-note {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+}
+
+.confirm-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
 }
 
 .online-grid {
@@ -3348,30 +3493,44 @@ button:disabled {
         padding: 18px 16px;
     }
 
+    .settings-container .back-link {
+        margin-bottom: 16px;
+    }
+
+    .settings-container .page-title {
+        margin: 0 0 18px;
+    }
+
     .settings-card {
-        padding: 5px 14px
+        padding: 4px 16px;
     }
 
     .setting-row {
-        gap: 9px
+        gap: 11px;
+        padding: 14px 0;
     }
 
     .setting-icon {
-        width: 33px;
-        height: 33px
+        width: 35px;
+        height: 35px;
     }
 
     .setting-copy strong {
-        font-size: 11px
+        font-size: 12px;
     }
 
     .setting-copy small {
-        font-size: 9px
+        font-size: 10px;
     }
 
     .danger-btn {
-        font-size: 9px;
-        padding: 8px
+        font-size: 10px;
+        padding: 7px 10px;
+    }
+
+    .confirm-modal {
+        padding: 20px 18px;
+        margin: 12px;
     }
 
     .online-grid {
@@ -3388,6 +3547,70 @@ button:disabled {
 
     .game-chip {
         max-width: 45%
+    }
+}
+
+@media (max-width: 380px) {
+    .settings-card {
+        padding: 2px 12px;
+    }
+
+    .setting-row {
+        gap: 9px;
+        padding: 12px 0;
+    }
+
+    .setting-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+    }
+
+    .setting-copy strong {
+        font-size: 11.5px;
+    }
+
+    .setting-copy small {
+        font-size: 9.5px;
+        line-height: 1.4;
+    }
+
+    .toggle-pill {
+        padding: 4px 7px 4px 10px;
+        font-size: 10px;
+        gap: 6px;
+    }
+
+    .toggle-knob {
+        width: 12px;
+        height: 12px;
+    }
+
+    .setting-row-action {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+            "icon copy"
+            ". action";
+        row-gap: 8px;
+        column-gap: 9px;
+        align-items: center;
+    }
+
+    .setting-row-action .setting-icon {
+        grid-area: icon;
+        align-self: start;
+    }
+
+    .setting-row-action .setting-copy {
+        grid-area: copy;
+    }
+
+    .setting-row-action .danger-btn {
+        grid-area: action;
+        justify-self: start;
+        padding: 6px 10px;
+        font-size: 10px;
     }
 }
 

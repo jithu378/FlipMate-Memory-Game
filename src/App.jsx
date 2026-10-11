@@ -110,6 +110,7 @@ export default function App() {
   const [historySort, setHistorySort] = useState('newest');
   const [historyPlayerFilter, setHistoryPlayerFilter] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const startAt = useRef(null);
@@ -1311,7 +1312,130 @@ export default function App() {
         );
       })()}
 
-      {page === 'settings' && <section className="content-page focus-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT COMFORTABLE</span><h1>Settings</h1><p>A few small things to make MindFlip feel like yours.</p></div><div className="settings-card"><div className="setting-row"><span className="setting-icon"><dark-icon>{dark ? <Moon size={19} /> : <Sun size={19} />}</dark-icon></span><div className="setting-copy"><strong>Appearance</strong><small>Choose a theme that's comfortable for you.</small></div><button className="toggle-pill" onClick={() => setDark((v) => !v)}>{dark ? 'Dark' : 'Light'}<span className={dark ? 'toggle-knob on' : 'toggle-knob'} /></button></div><div className="setting-row"><span className="setting-icon">{sound ? <Volume2 size={19} /> : <VolumeX size={19} />}</span><div className="setting-copy"><strong>Sound effects</strong><small>Play a subtle sound when you find a match.</small></div><button className={sound ? 'switch on' : 'switch'} aria-label="Toggle sound" onClick={() => setSound((v) => !v)}><span /></button></div><div className="setting-row"><span className="setting-icon"><BarChart3 size={19} /></span><div className="setting-copy"><strong>Local data</strong><small>Clear this browser's saved results and preferences.</small></div><button className="btn danger-btn" onClick={() => { if (window.confirm('Clear local game history and saved statistics?')) { const clean = { displayName: customName }; setPersisted(clean); saveStore({ ...clean, dark, sound }); toast('Local history cleared.'); } }}><Trash2 size={14} aria-hidden="true" /> Clear data</button></div><div className="settings-foot"><Info size={15} /><p>MindFlip is a work-in-progress starter. Online rooms, accounts, and global rankings require Supabase configuration before they can be used across devices.</p></div></div></section>}
+      {page === 'settings' && (
+        <section className="content-page focus-page">
+          <div className="settings-container">
+            <button className="back-link" onClick={() => nav('home')}>
+              <ArrowLeft size={16} /> Back home
+            </button>
+            <div className="page-title">
+              <span className="eyebrow">MAKE IT COMFORTABLE</span>
+              <h1>Settings</h1>
+              <p>Customize your experience and manage saved preferences.</p>
+            </div>
+            <div className="settings-card">
+            <div className="setting-row">
+              <span className="setting-icon">
+                {dark ? <Moon size={18} /> : <Sun size={18} />}
+              </span>
+              <div className="setting-copy">
+                <strong>Appearance</strong>
+                <small>Choose light or dark theme.</small>
+              </div>
+              <button
+                className="toggle-pill"
+                onClick={() => setDark((v) => !v)}
+                aria-label={`Switch to ${dark ? 'Light' : 'Dark'} theme`}
+              >
+                {dark ? 'Dark' : 'Light'}
+                <span className={dark ? 'toggle-knob on' : 'toggle-knob'} />
+              </button>
+            </div>
+            <div className="setting-row">
+              <span className="setting-icon">
+                {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              </span>
+              <div className="setting-copy">
+                <strong>Sound effects</strong>
+                <small>Play subtle audio cues when finding a match.</small>
+              </div>
+              <button
+                className={sound ? 'switch on' : 'switch'}
+                aria-label="Toggle sound"
+                onClick={() => setSound((v) => !v)}
+              >
+                <span />
+              </button>
+            </div>
+            <div className="setting-row setting-row-action">
+              <span className="setting-icon">
+                <BarChart3 size={18} />
+              </span>
+              <div className="setting-copy">
+                <strong>Local data</strong>
+                <small>Manage local game history, best records, and saved scores.</small>
+              </div>
+              <button
+                type="button"
+                className="btn danger-btn"
+                onClick={() => setShowClearConfirm(true)}
+              >
+                <Trash2 size={13} aria-hidden="true" /> Clear data
+              </button>
+            </div>
+            <div className="settings-foot">
+              <Info size={14} />
+              <p>MindFlip stores records locally. Online rooms and cross-device sync will be enabled once backend integration is connected.</p>
+            </div>
+          </div>
+        </div>
+
+          {showClearConfirm && (
+            <div className="modal-backdrop" onClick={() => setShowClearConfirm(false)}>
+              <div
+                className="confirm-modal"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="clear-modal-title"
+              >
+                <div className="confirm-modal-header">
+                  <span className="confirm-modal-icon">
+                    <Trash2 size={20} />
+                  </span>
+                  <div>
+                    <h3 id="clear-modal-title">Clear local game data?</h3>
+                    <p className="confirm-modal-subtitle">This action cannot be undone.</p>
+                  </div>
+                </div>
+                <div className="confirm-modal-body">
+                  <p>The following information saved on this browser will be permanently deleted:</p>
+                  <ul className="confirm-delete-list">
+                    <li>Solo and multiplayer match history</li>
+                    <li>Personal records and best scores</li>
+                    <li>Lifetime stats (games played, pairs matched)</li>
+                  </ul>
+                  <p className="confirm-preserve-note">
+                    Your display name and sound/theme preferences will be kept.
+                  </p>
+                </div>
+                <div className="confirm-modal-actions">
+                  <button
+                    type="button"
+                    className="btn secondary small-btn"
+                    onClick={() => setShowClearConfirm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn danger-solid-btn small-btn"
+                    onClick={() => {
+                      const clean = { displayName: customName };
+                      setPersisted(clean);
+                      saveStore({ ...clean, dark, sound });
+                      setShowClearConfirm(false);
+                      toast('Local game data cleared.');
+                    }}
+                  >
+                    Yes, clear data
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title" style={{ textAlign: 'center', margin: '40px 0 20px' }}><span className="local-badge" style={{ display: 'inline-block', marginBottom: '16px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Sparkles size={14} /> COMING SOON</span><h1 style={{ marginBottom: '12px' }}>Online Multiplayer</h1><p style={{ maxWidth: '400px', margin: '0 auto', fontSize: '15px' }}>Play MindFlip with friends, wherever they are.</p></div><div className="settings-card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Globe2 size={32} /></div><p style={{ color: 'var(--muted)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '400px', margin: '0 auto' }}>We're working on online multiplayer, including private rooms, friend invitations, and real-time matches. Stay tuned for updates.</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', textAlign: 'left', marginBottom: '32px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Lock size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Private Rooms</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Users size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Invite Friends</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Zap size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Real-Time Matches</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Trophy size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Online Leaderboards</span></div></div><button className="btn primary" onClick={() => nav('home')} style={{ padding: '0 32px' }}>Back to Home</button></div></section>}
       {page === 'how_to_play' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">LEARN THE RULES</span><h1>How to Play MindFlip</h1><p>Train your memory, sharpen your focus, and make every move count.</p></div><div className="section-block"><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px' }}><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Info size={14} /></span><div><h3>Game Basics</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Cards are placed face down.</li><li>Select two cards to reveal them.</li><li>If they match, they remain matched.</li><li>If they do not match, they are turned face down again.</li><li>Remember card positions to find matching pairs.</li><li>Complete all pairs before the timer runs out.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><UserRound size={14} /></span><div><h3>Game Modes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Solo:</strong> Play alone and challenge your memory.</li><li><strong>Local Multiplayer:</strong> Play with 2–4 players on the same device.</li><li><strong>Online Multiplayer:</strong> (Coming Soon)</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Zap size={14} /></span><div><h3>Difficulty Levels</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Easy:</strong> 4 × 3 grid, 12 cards, 6 pairs, 2 minutes.</li><li><strong>Normal:</strong> 4 × 4 grid, 16 cards, 8 pairs, 3 minutes.</li><li><strong>Medium:</strong> 6 × 4 grid, 24 cards, 12 pairs, 4 minutes.</li><li><strong>Hard:</strong> 6 × 6 grid, 36 cards, 18 pairs, 6 minutes.</li><li><strong>Extreme:</strong> 8 × 6 grid, 48 cards, 24 pairs, 8 minutes.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Sparkles size={14} /></span><div><h3>Card Themes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Random:</strong> Selects one theme for the current match.</li><li><strong>Symbols</strong></li><li><strong>Nature</strong></li><li><strong>Tech</strong></li><li><strong>Everyday</strong></li></ul><p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Random chooses a theme for the match and does not change the theme between cards during that match.</p></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Target size={14} /></span><div><h3>Scoring and Accuracy</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>A move represents one completed attempt involving two cards.</li><li>Points are awarded for pairs, with faster completion and fewer moves yielding a higher score.</li><li><strong>Accuracy:</strong> successful matching attempts divided by total completed attempts, multiplied by 100.</li><li>If no attempts have been completed, accuracy is 0%.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Users size={14} /></span><div><h3>Local Multiplayer Rules</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Each player has their own score and statistics.</li><li>A correct match keeps the turn with the current player (if configured).</li><li>A mismatch passes the turn to the next player.</li><li>The game ends when all pairs are matched or the overall timer runs out.</li></ul></div><div className="setup-panel" style={{ gridColumn: '1 / -1' }}><div className="panel-heading"><span className="step-number"><Star size={14} /></span><div><h3>Tips for Better Results</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Pay attention to card positions.</li><li>Start with the easiest difficulty if you are new.</li><li>Avoid random guessing.</li><li>Improve your accuracy by remembering previously revealed cards.</li></ul><div style={{ display: 'flex', gap: '12px', marginTop: '24px', flexWrap: 'wrap' }}><button className="btn primary" onClick={() => { setMode('solo'); nav('setup'); }}>Play Solo <ChevronRight size={17} /></button><button className="btn secondary" onClick={() => { setMode('local'); nav('setup'); }}><Users size={17} /> Play Together</button></div></div></div></div></section>}
