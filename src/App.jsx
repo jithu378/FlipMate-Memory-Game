@@ -716,7 +716,7 @@ export default function App() {
       </div>
       <div className="footer-bottom">
         <span style={{ fontSize: '12px', color: 'var(--muted)' }}>© {new Date().getFullYear()} JB Devs. All rights reserved.</span>
-        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.0.0</span>
+        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.0.1</span>
       </div>
     </footer>}
     {notice && <div className="toast" role="status"><Check size={16} />{notice}</div>}
