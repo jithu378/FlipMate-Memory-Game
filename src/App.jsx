@@ -81,6 +81,7 @@ export default function App() {
   const [customName, setCustomName] = useState(persisted.displayName || 'Player');
   const [leaderboardFilter, setLeaderboardFilter] = useState('Easy');
   const [leaderboardMode, setLeaderboardMode] = useState('overall');
+  const [multiplayerView, setMultiplayerView] = useState('top_players');
   const [expandedPlayer, setExpandedPlayer] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('Easy');
   const [historySort, setHistorySort] = useState('newest');
@@ -446,7 +447,7 @@ export default function App() {
       multiTopPlayers[i].displayRank = currentMultiRank;
     }
 
-    const multiRecords = cleanHistory.filter(r => r.mode !== 'solo').slice(0, 100);
+    const multiRecords = cleanHistory.filter(r => r.mode !== 'solo');
     const multiMatchesMap = new window.Map();
     multiRecords.forEach(r => {
       const k = r.sessionId || `legacy-${r.date}`;
@@ -510,6 +511,7 @@ export default function App() {
     });
 
     const multiMatches = Array.from(multiMatchesMap.values());
+    multiMatches.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
     let hList = [...cleanHistory];
     const pSet = new Set(cleanHistory.map(r => (r.name || 'Player').trim()));
@@ -542,7 +544,7 @@ export default function App() {
   };
   const nav = (next) => {
     if (next !== page) {
-      if (next === 'leaderboard') { setLeaderboardFilter('Easy'); setLeaderboardMode('overall'); }
+      if (next === 'leaderboard') { setLeaderboardFilter('Easy'); setLeaderboardMode('overall'); setMultiplayerView('top_players'); }
       if (next === 'history' || next === 'multiplayer_history') setHistoryFilter('Easy');
     }
     setPage(next);
@@ -665,7 +667,7 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools">{mode === 'solo' && <button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button>}<span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'overall' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('overall')} style={{ padding: '6px 12px', fontSize: '11px' }}>Overall</button><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>{leaderboardMode === 'overall' ? 'Aggregate performance across all recorded games' : leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : 'Rankings & completed match breakdown · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}
+      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'overall' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('overall')} style={{ padding: '6px 12px', fontSize: '11px' }}>Overall</button><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>{leaderboardMode === 'overall' ? 'Aggregate performance across all recorded games' : leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : multiplayerView === 'top_players' ? 'Player rankings across all multiplayer games · Local device' : 'Full match history and participant breakdowns · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}{leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
       {leaderboardMode === 'overall' && (
         overallStats.length ? (
           <div className="leaderboard-list">
@@ -736,32 +738,67 @@ export default function App() {
       {leaderboardMode === 'solo' && (
         bests.length ? (
           <div className="leaderboard-list">
-            <div className="leader-row solo-clean-row table-header">
+            <div className="leader-row solo-row table-header">
               <span>Rank</span>
               <span>Player</span>
-              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                <span className="desktop-header-label">Best Score</span>
-                <span className="mobile-header-label">Score</span>
-              </span>
-              <span style={{ textAlign: 'right' }}>Time</span>
-              <span className="col-moves" style={{ textAlign: 'right' }}>Moves</span>
-              <span className="col-acc" style={{ textAlign: 'right' }}>Acc.</span>
-              <span className="col-date" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Date</span>
+              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Best Score</span>
+              <span style={{ textAlign: 'center' }}>Details</span>
             </div>
             {bests.map((row, i) => {
               const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0;
+              const totalPairs = (DIFFICULTIES[row.difficulty] || DIFFICULTIES[leaderboardFilter] || { pairs: 6 }).pairs;
+              const isExpanded = expandedPlayer === `solo-${row.name || i}`;
               return (
-                <div className="leader-row solo-clean-row" key={row.name || (row.id || `${row.date}-${i}`)}>
-                  <span className="rank-cell">{renderRankBadge(i + 1)}</span>
-                  <span className="leader-player-clean" title={row.name}>
-                    <span className="player-display-name">{row.name || 'Player'}</span>
-                  </span>
-                  <strong style={{ textAlign: 'right' }}>{row.score.toLocaleString()}</strong>
-                  <span style={{ textAlign: 'right' }}>{row.seconds ? formatTime(row.seconds) : '—'}</span>
-                  <span className="col-moves" style={{ textAlign: 'right' }}>{row.moves || 0}</span>
-                  <span className="col-acc" style={{ textAlign: 'right' }}>{acc}%</span>
-                  <span className="col-date" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span>
-                </div>
+                <React.Fragment key={row.name || (row.id || `${row.date}-${i}`)}>
+                  <div
+                    className="leader-row solo-row"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setExpandedPlayer(isExpanded ? null : `solo-${row.name || i}`)}
+                  >
+                    <span className="rank-cell">{renderRankBadge(i + 1)}</span>
+                    <span className="leader-player-clean" title={row.name}>
+                      <span className="player-display-name">{row.name || 'Player'}</span>
+                    </span>
+                    <strong style={{ textAlign: 'right' }}>{row.score.toLocaleString()}</strong>
+                    <span style={{ textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        className="row-toggle-btn"
+                        aria-label={isExpanded ? `Hide statistics for ${row.name || 'Player'}` : `View statistics for ${row.name || 'Player'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedPlayer(isExpanded ? null : `solo-${row.name || i}`);
+                        }}
+                      >
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <div className="player-expanded-panel solo-expanded-panel">
+                      <div className="expanded-stat">
+                        <small>Best Score</small>
+                        <strong>{row.score.toLocaleString()}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Completion Time</small>
+                        <strong>{row.seconds ? formatTime(row.seconds) : '—'}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Total Moves</small>
+                        <strong>{row.moves || 0}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Pairs Matched</small>
+                        <strong>{row.completedPairs != null ? row.completedPairs : totalPairs} / {totalPairs}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Accuracy</small>
+                        <strong>{acc}%</strong>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
@@ -774,129 +811,150 @@ export default function App() {
           </div>
         )
       )}
-      {leaderboardMode === 'multiplayer' && (
-        <div className="multi-leaderboard-container">
-          <div className="multi-section">
-            <div className="multi-section-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Trophy size={16} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Top Players</h3>
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Ranked by MP wins & score</span>
+      {leaderboardMode === 'multiplayer' && multiplayerView === 'top_players' && (
+        multiTopPlayers.length ? (
+          <div className="leaderboard-list">
+            <div className="leader-row multi-top-row table-header">
+              <span>Rank</span>
+              <span>Player</span>
+              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Total Score</span>
+              <span style={{ textAlign: 'right' }}>Games</span>
+              <span style={{ textAlign: 'right' }}>MP Wins</span>
+              <span style={{ textAlign: 'center' }}>Details</span>
             </div>
-            {multiTopPlayers.length ? (
-              <div className="leaderboard-list">
-                <div className="leader-row multi-top-row table-header">
-                  <span>Rank</span>
-                  <span>Player</span>
-                  <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                    <span className="desktop-header-label">Total Score</span>
-                    <span className="mobile-header-label">Score</span>
-                  </span>
-                  <span style={{ textAlign: 'right' }}>
-                    <span className="desktop-header-label">Games</span>
-                    <span className="mobile-header-label">Gms</span>
-                  </span>
-                  <span style={{ textAlign: 'right' }}>
-                    <span className="desktop-header-label">MP Wins</span>
-                    <span className="mobile-header-label">Wins</span>
-                  </span>
-                </div>
-                {multiTopPlayers.map((row, i) => (
-                  <div className="leader-row multi-top-row" key={row.name || i}>
+            {multiTopPlayers.map((row, i) => {
+              const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0;
+              const isExpanded = expandedPlayer === `multi-${row.name || i}`;
+              return (
+                <React.Fragment key={row.name || i}>
+                  <div
+                    className="leader-row multi-top-row"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setExpandedPlayer(isExpanded ? null : `multi-${row.name || i}`)}
+                  >
                     <span className="rank-cell">{renderRankBadge(row.displayRank ?? (i + 1))}</span>
                     <span className="leader-player-clean" title={row.name}>
                       <span className="player-display-name">{row.name || 'Player'}</span>
                     </span>
                     <strong style={{ textAlign: 'right' }}>{row.totalScore.toLocaleString()}</strong>
                     <span style={{ textAlign: 'right' }}>{row.gamesPlayed}</span>
-                    <span style={{ textAlign: 'right', fontWeight: 600, color: row.wins > 0 ? 'var(--green)' : 'inherit' }}>{row.wins}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, color: row.wins > 0 ? 'var(--green)' : 'inherit' }}>
+                      {row.wins}
+                    </span>
+                    <span style={{ textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        className="row-toggle-btn"
+                        aria-label={isExpanded ? `Hide statistics for ${row.name || 'Player'}` : `View statistics for ${row.name || 'Player'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedPlayer(isExpanded ? null : `multi-${row.name || i}`);
+                        }}
+                      >
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    </span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state" style={{ padding: '28px 16px' }}>
-                <span className="empty-icon" style={{ width: '40px', height: '40px', marginBottom: '10px' }}><Users size={20} /></span>
-                <h3 style={{ fontSize: '14px' }}>No multiplayer records yet</h3>
-                <p style={{ fontSize: '12px' }}>Gather some friends and play local multiplayer on this device.</p>
-              </div>
-            )}
+                  {isExpanded && (
+                    <div className="player-expanded-panel multi-expanded-panel">
+                      <div className="expanded-stat">
+                        <small>Pairs Matched</small>
+                        <strong>{row.completedPairs.toLocaleString()}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Total Moves</small>
+                        <strong>{row.moves.toLocaleString()}</strong>
+                      </div>
+                      <div className="expanded-stat">
+                        <small>Accuracy</small>
+                        <strong>{acc}%</strong>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
+        ) : (
+          <div className="empty-state">
+            <span className="empty-icon"><Trophy size={24} /></span>
+            <h3>No multiplayer records yet</h3>
+            <p>Gather some friends and play local multiplayer on this device to see rankings.</p>
+            <button className="btn primary" onClick={() => nav('setup')}>Start multiplayer game</button>
+          </div>
+        )
+      )}
 
-          <div className="multi-section" style={{ marginTop: '24px' }}>
-            <div className="multi-section-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Users size={16} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Recent Matches</h3>
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{multiMatches.length} completed match{multiMatches.length === 1 ? '' : 'es'}</span>
-            </div>
-            {multiMatches.length ? (
-              <div className="match-cards-grid">
-                {multiMatches.map((match, mIdx, arr) => (
-                  <div key={match.id} className="match-card">
-                    <div className="match-card-top">
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span className="match-number-tag">Match {arr.length - mIdx}</span>
-                        {match.difficulty ? <span className="difficulty-pill">{match.difficulty}</span> : null}
-                      </div>
-                      <span className="match-date-tag">
-                        {match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                      </span>
+      {leaderboardMode === 'multiplayer' && multiplayerView === 'recent_matches' && (
+        multiMatches.length ? (
+          <div className="multi-matches-container">
+            <div className="match-cards-grid">
+              {multiMatches.map((match, mIdx, arr) => (
+                <div key={match.id} className="match-card">
+                  <div className="match-card-top">
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span className="match-number-tag">Match {arr.length - mIdx}</span>
+                      {match.difficulty ? <span className="difficulty-pill">{match.difficulty}</span> : null}
                     </div>
-                    <div className="match-player-table">
-                      <div className="match-table-head">
-                        <span>Player</span>
-                        <span style={{ textAlign: 'right' }}>Score</span>
-                        <span style={{ textAlign: 'right' }}>Moves</span>
-                        <span style={{ textAlign: 'center' }}>Result</span>
-                      </div>
-                      {match.records.map((row, rIdx) => {
-                        const rank = row.calculatedRank ?? (rIdx + 1);
-                        const hasWinnerTie = match.records.filter(r => (r.calculatedRank ?? 1) === 1).length > 1;
-                        const isWin = rank === 1 && !hasWinnerTie;
-                        const isDraw = rank === 1 && hasWinnerTie;
-                        return (
-                          <div className={`match-table-row ${isWin ? 'is-winner' : ''}`} key={row.id || `${match.id}-${rIdx}`}>
-                            <span className="match-player-name">{row.name || 'Player'}</span>
-                            <span className="match-player-score">{(row.score ?? 0).toLocaleString()}</span>
-                            <span className="match-player-moves">{row.moves ?? '—'}</span>
-                            <span className="match-player-result">
-                              {isWin && (
-                                <span className="result-pill winner">
-                                  <Trophy size={11} strokeWidth={2.4} aria-hidden="true" /> Winner
-                                </span>
-                              )}
-                              {isDraw && (
-                                <span className="result-pill draw">Draw</span>
-                              )}
-                              {!isWin && !isDraw && rank === 2 && (
-                                <span className="result-pill second">2nd</span>
-                              )}
-                              {!isWin && !isDraw && rank === 3 && (
-                                <span className="result-pill third">3rd</span>
-                              )}
-                              {!isWin && !isDraw && rank === 4 && (
-                                <span className="result-pill fourth">4th</span>
-                              )}
-                              {!isWin && !isDraw && rank > 4 && (
-                                <span className="result-pill neutral">{rank}th</span>
-                              )}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <span className="match-date-tag">
+                      {match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state" style={{ padding: '28px 16px' }}>
-                <p style={{ fontSize: '12px', margin: 0 }}>No completed matches recorded yet.</p>
-              </div>
-            )}
+                  <div className="match-player-table">
+                    <div className="match-table-head">
+                      <span>Player</span>
+                      <span style={{ textAlign: 'right' }}>Score</span>
+                      <span style={{ textAlign: 'right' }}>Moves</span>
+                      <span style={{ textAlign: 'center' }}>Result</span>
+                    </div>
+                    {match.records.map((row, rIdx) => {
+                      const rank = row.calculatedRank ?? (rIdx + 1);
+                      const hasWinnerTie = match.records.filter(r => (r.calculatedRank ?? 1) === 1).length > 1;
+                      const isWin = rank === 1 && !hasWinnerTie;
+                      const isDraw = rank === 1 && hasWinnerTie;
+                      return (
+                        <div className={`match-table-row ${isWin ? 'is-winner' : ''}`} key={row.id || `${match.id}-${rIdx}`}>
+                          <span className="match-player-name">{row.name || 'Player'}</span>
+                          <span className="match-player-score">{(row.score ?? 0).toLocaleString()}</span>
+                          <span className="match-player-moves">{row.moves ?? '—'}</span>
+                          <span className="match-player-result">
+                            {isWin && (
+                              <span className="result-pill winner">
+                                <Trophy size={11} strokeWidth={2.4} aria-hidden="true" /> Winner
+                              </span>
+                            )}
+                            {isDraw && (
+                              <span className="result-pill draw">Draw</span>
+                            )}
+                            {!isWin && !isDraw && rank === 2 && (
+                              <span className="result-pill second">2nd</span>
+                            )}
+                            {!isWin && !isDraw && rank === 3 && (
+                              <span className="result-pill third">3rd</span>
+                            )}
+                            {!isWin && !isDraw && rank === 4 && (
+                              <span className="result-pill fourth">4th</span>
+                            )}
+                            {!isWin && !isDraw && rank > 4 && (
+                              <span className="result-pill neutral">{rank}th</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="empty-state">
+            <span className="empty-icon"><Users size={24} /></span>
+            <h3>No completed matches yet</h3>
+            <p>Play a multiplayer game with friends to record match history.</p>
+            <button className="btn primary" onClick={() => nav('setup')}>Start multiplayer game</button>
+          </div>
+        )
       )}
       <div className="leaderboard-note"><Info size={15} /><p>This is a local leaderboard stored in this browser. A shared global leaderboard requires the Supabase backend to be configured.</p></div></div></section>}
       {page === 'history' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">YOUR PAST ROUNDS</span><h1>Solo Game History</h1><p>All recorded solo games saved on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><p>All recorded solo games · Local device</p></div><span className="local-badge"><Clock3 size={14} /> Game history</span></div><div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${historyFilter === f ? 'selected' : ''}`} onClick={() => setHistoryFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><div style={{ display: 'flex', gap: '8px' }}><select value={historyPlayerFilter} onChange={(e) => setHistoryPlayerFilter(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="">All players</option>{allPlayers.map(p => <option key={p} value={p}>{p}</option>)}</select><select value={historySort} onChange={(e) => setHistorySort(e.target.value)} style={{ fontSize: '11px', padding: '6px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--text)' }}><option value="newest">Newest first</option><option value="score">Highest score</option><option value="time">Fastest time</option></select></div></div>{historyList.filter(r => r.mode === 'solo').length ? <div className="leaderboard-list"><div className="leader-row table-header"><span>No.</span><span>Player</span><span>Diff</span><span style={{ textAlign: 'right' }}>Score</span><span style={{ textAlign: 'right' }}>Time</span><span style={{ textAlign: 'right' }}>Moves</span><span style={{ textAlign: 'right' }}>Acc.</span><span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Date</span></div>{historyList.filter(r => r.mode === 'solo').slice(0, 100).map((row, i) => { const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0; return <div className="leader-row" key={row.id || `${row.date}-${i}`}><span className="rank">{String(i + 1).padStart(2, '0')}</span><span className="leader-player" title="Solo"><span className="player-avatar">{(row.name || 'P')[0].toUpperCase()}</span>{row.name || 'Player'}</span><span>{row.difficulty}</span><strong style={{ textAlign: 'right' }}>{row.score.toLocaleString()}</strong><span style={{ textAlign: 'right' }}>{row.seconds ? formatTime(row.seconds) : '—'}</span><span style={{ textAlign: 'right' }}>{row.moves || 0}</span><span style={{ textAlign: 'right' }}>{acc}%</span><span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{row.date ? new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span></div>; })}</div> : <div className="empty-state"><span className="empty-icon"><Clock3 size={24} /></span><h3>No games yet</h3><p>Complete a solo round and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
