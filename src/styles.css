@@ -780,10 +780,19 @@ button:disabled {
     font-size: 11px
 }
 
-.setup-wrap,
-.game-wrap,
 .content-page {
     padding: 36px 0 70px;
+    max-width: 930px;
+    margin: 0 auto
+}
+
+.content-page.focus-page {
+    padding: 36px 0 24px;
+}
+
+.setup-wrap,
+.game-wrap {
+    padding: 24px 0 28px;
     max-width: 930px;
     margin: 0 auto
 }
@@ -1441,7 +1450,14 @@ button:disabled {
 .result-actions {
     display: flex;
     justify-content: center;
-    gap: 9px
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.result-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
 }
 
 .leaderboard-card {
@@ -2271,7 +2287,7 @@ button:disabled {
     .setup-wrap {
         max-width: 1040px;
         padding-top: 24px;
-        padding-bottom: 40px;
+        padding-bottom: 32px;
     }
 
     .page-title {
@@ -2733,10 +2749,17 @@ button:disabled {
         display: none
     }
 
-    .setup-wrap,
-    .game-wrap,
     .content-page {
         padding: 27px 0 45px
+    }
+
+    .content-page.focus-page {
+        padding: 27px 0 20px;
+    }
+
+    .setup-wrap,
+    .game-wrap {
+        padding: 16px 0 20px;
     }
 
     .page-title {
@@ -2854,6 +2877,15 @@ button:disabled {
 
     .results-panel {
         padding: 24px 14px
+    }
+
+    .result-actions {
+        gap: 8px;
+    }
+
+    .result-actions .btn {
+        flex: 1 1 auto;
+        min-width: 100px;
     }
 
     .leaderboard-head {
