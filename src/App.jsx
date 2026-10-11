@@ -9,7 +9,7 @@ import {
   Leaf, Trees, TreePine, Flower, Flower2, Bug, Bird, Rabbit, Snail, Turtle, Fish, Mountain, MountainSnow, Waves, CloudRain, CloudLightning, Wind, Sprout, Feather, Clover, Rat, Worm, Apple, Cherry,
   Laptop, Smartphone, Gamepad2, Headphones, Camera, Watch, Keyboard, Mouse, Tv, Speaker, HardDrive, Printer, Battery, Plug, Cpu, Wifi, Bluetooth, Radio, Calculator, Lightbulb, Monitor, Tablet, Mic, Webcam,
   Coffee, Book, Pencil, Scissors, Ticket, Gift, Plane, Car, Bus, Train, Bike, Compass, Map, Briefcase, ShoppingCart, CreditCard, Glasses, Key, Lock, Mail, Phone, Video,
-  ChevronDown, Instagram, Linkedin, Code2, FolderGit2, PlaneTakeoff, Link2
+  ChevronDown, Instagram, Linkedin, Code2, FolderGit2, PlaneTakeoff, Link2, CircleUserRound
 } from 'lucide-react';
 
 const DIFFICULTIES = {
@@ -444,20 +444,26 @@ export default function App() {
     {!isGameplayActive && <header className="topbar" ref={headerRef}>
       <button className="brand" onClick={() => nav('home')} aria-label="MindFlip home"><span className="brand-mark"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>mindflip</strong><small>by JB Devs</small></span></button>
       <nav id="main-navigation" className={`main-nav${mobileMenuOpen ? ' mobile-open' : ''}`} aria-label="Main navigation">
-        <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => nav('home')}><House size={16} /> Home</button>
-        <button className={page === 'leaderboard' ? 'nav-link active' : 'nav-link'} onClick={() => nav('leaderboard')}><Trophy size={16} /> Leaderboard</button>
+        <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('home'); setMobileMenuOpen(false); }}><House size={16} /> Home</button>
+        <button className={page === 'leaderboard' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('leaderboard'); setMobileMenuOpen(false); }}><Trophy size={16} /> Leaderboard</button>
         <div className="nav-dropdown" ref={historyMenuRef}>
           <button className={(page === 'history' || page === 'multiplayer_history') ? 'nav-link active' : 'nav-link'} onClick={() => setHistoryMenuOpen(!historyMenuOpen)} aria-expanded={historyMenuOpen} aria-haspopup="true"><Clock3 size={16} /> History <ChevronDown size={14} style={{ marginLeft: '-2px', transform: historyMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></button>
           {historyMenuOpen && <div className="dropdown-menu">
-            <button className={page === 'history' ? 'dropdown-item active' : 'dropdown-item'} onClick={() => { nav('history'); setHistoryMenuOpen(false); }}><UserRound size={14} /> Solo History</button>
-            <button className={page === 'multiplayer_history' ? 'dropdown-item active' : 'dropdown-item'} onClick={() => { nav('multiplayer_history'); setHistoryMenuOpen(false); }}><Users size={14} /> Multiplayer History</button>
+            <button className={page === 'history' ? 'dropdown-item active' : 'dropdown-item'} onClick={() => { nav('history'); setHistoryMenuOpen(false); setMobileMenuOpen(false); }}><UserRound size={14} /> Solo History</button>
+            <button className={page === 'multiplayer_history' ? 'dropdown-item active' : 'dropdown-item'} onClick={() => { nav('multiplayer_history'); setHistoryMenuOpen(false); setMobileMenuOpen(false); }}><Users size={14} /> Multiplayer History</button>
           </div>}
         </div>
-        <button className={page === 'how_to_play' ? 'nav-link active' : 'nav-link'} onClick={() => nav('how_to_play')}><Book size={16} /> How to Play</button>
-        <button className={page === 'about_developer' ? 'nav-link active' : 'nav-link'} onClick={() => nav('about_developer')}><User size={16} /> About Developer</button>
-        <button className={page === 'profile' ? 'nav-link active' : 'nav-link'} onClick={() => nav('profile')}><UserRound size={16} /> Profile</button>
+        <button className={page === 'how_to_play' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('how_to_play'); setMobileMenuOpen(false); }}><Book size={16} /> How to Play</button>
+        <button className={page === 'about_developer' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('about_developer'); setMobileMenuOpen(false); }}><Code2 size={16} /> About Developer</button>
+        <button className={page === 'profile' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('profile'); setMobileMenuOpen(false); }}><CircleUserRound size={16} /> Profile</button>
+        <button className={page === 'settings' ? 'nav-link active mobile-nav-settings' : 'nav-link mobile-nav-settings'} onClick={() => { nav('settings'); setMobileMenuOpen(false); }}><Settings size={16} /> Settings</button>
       </nav>
-      <div className="top-actions"><button className="icon-btn" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((v) => !v)}>{dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}</button><button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => nav('settings')}><Settings size={18} aria-hidden="true" /></button><button className="avatar" aria-label="Profile" onClick={() => nav('profile')}>{(customName.trim()[0] || 'P').toUpperCase()}</button><button className="icon-btn mobile-menu-toggle" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} aria-controls="main-navigation" onClick={toggleMobileMenu}>{mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}</button></div>
+      <div className="top-actions">
+        <button className="icon-btn theme-toggle-btn" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((v) => !v)}>{dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}</button>
+        <button className="icon-btn settings-btn desktop-only" title="Settings" aria-label="Settings" onClick={() => nav('settings')}><Settings size={18} aria-hidden="true" /></button>
+        <button className="avatar desktop-only" aria-label="Profile" onClick={() => nav('profile')}>{(customName.trim()[0] || 'P').toUpperCase()}</button>
+        <button className="icon-btn mobile-menu-toggle" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} aria-controls="main-navigation" onClick={toggleMobileMenu}>{mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}</button>
+      </div>
     </header>}
 
     <main className="container">
