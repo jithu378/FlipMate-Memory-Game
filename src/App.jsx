@@ -1114,9 +1114,16 @@ export default function App() {
         const playerNameTrimmed = (customName || '').trim();
         const playerMultiWins = playerNameTrimmed ? (persisted.multiplayerWins?.[playerNameTrimmed] || 0) : 0;
         
-        // Personal records from valid completed solo games only
+        // Personal records from valid completed solo games for the current profile player only
+        const isCurrentPlayerRecord = (r) => {
+          if (!r) return false;
+          const rName = (r.name || 'Player').trim();
+          return rName.toLowerCase() === playerNameTrimmed.toLowerCase();
+        };
+
         const completedSoloGames = (persisted.history || []).filter(r => {
           if (!r || r.mode !== 'solo') return false;
+          if (!isCurrentPlayerRecord(r)) return false;
           const diffConfig = DIFFICULTIES[r.difficulty];
           if (!diffConfig) return false;
           const targetPairs = diffConfig.pairs;
@@ -1151,6 +1158,59 @@ export default function App() {
               return (a.seconds || Infinity) - (b.seconds || Infinity);
             })[0]
           : null;
+
+        // Overall progress statistics computed from authoritative completed match records for the current profile player only
+        const seenProfileMatches = new Set();
+        let totalGamesPlayed = 0;
+        let totalPairsMatched = 0;
+        let totalOverallScore = 0;
+
+        (persisted.history || []).forEach(r => {
+          if (!r) return;
+          if (!isCurrentPlayerRecord(r)) return;
+
+          const isSolo = r.mode === 'solo';
+          const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
+          if (!isSolo && !isMulti) return;
+
+          const diffConfig = DIFFICULTIES[r.difficulty];
+          const expectedPairs = diffConfig?.pairs;
+          if (expectedPairs == null) return;
+
+          if (isSolo) {
+            // Validate completed solo game
+            const isCompleted = typeof r.completedPairs === 'number'
+              ? r.completedPairs >= expectedPairs
+              : (typeof r.moves === 'number' && r.moves >= expectedPairs && (r.score > 0));
+            if (!isCompleted) return;
+
+            const matchKey = `solo-${r.id || r.sessionId || `${r.date}-${r.score}`}`;
+            if (seenProfileMatches.has(matchKey)) return;
+            seenProfileMatches.add(matchKey);
+
+            totalGamesPlayed += 1;
+            totalPairsMatched += (typeof r.completedPairs === 'number' ? r.completedPairs : expectedPairs);
+            const scoreNum = Number(r.score);
+            if (Number.isFinite(scoreNum)) totalOverallScore += scoreNum;
+          } else {
+            // Validate completed multiplayer record for this player
+            if (typeof r.completedPairs !== 'number' && typeof r.score !== 'number') return;
+            const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${playerNameTrimmed.toLowerCase()}`;
+            
+            // Increment match count only once per multiplayer match for this player
+            if (seenProfileMatches.has(matchKey)) return;
+            seenProfileMatches.add(matchKey);
+
+            totalGamesPlayed += 1;
+            if (typeof r.completedPairs === 'number' && r.completedPairs > 0) {
+              totalPairsMatched += r.completedPairs;
+            }
+            const scoreNum = Number(r.score);
+            if (Number.isFinite(scoreNum) && scoreNum > 0) {
+              totalOverallScore += scoreNum;
+            }
+          }
+        });
 
         return (
           <section className="content-page focus-page">
@@ -1238,15 +1298,15 @@ export default function App() {
               <div className="profile-stats-grid">
                 <div className="profile-stat-box">
                   <small>Games Played</small>
-                  <strong>{persisted.gamesPlayed || 0}</strong>
+                  <strong>{totalGamesPlayed}</strong>
                 </div>
                 <div className="profile-stat-box">
-                  <small>Pairs Matched</small>
-                  <strong>{persisted.totalPairs || 0}</strong>
+                  <small>Total Pairs Matched</small>
+                  <strong>{totalPairsMatched}</strong>
                 </div>
                 <div className="profile-stat-box">
-                  <small>Best Solo Score</small>
-                  <strong>{bestScoreRecord ? bestScoreRecord.score.toLocaleString() : '—'}</strong>
+                  <small>Overall Score</small>
+                  <strong>{totalOverallScore.toLocaleString()}</strong>
                 </div>
                 <div className="profile-stat-box">
                   <small>Multiplayer Wins</small>
