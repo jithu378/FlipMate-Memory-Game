@@ -5300,3 +5300,132 @@ button:disabled {
         line-height: 1.5;
     }
 }
+
+/* First-Time Welcome Screen */
+.welcome-screen-wrap {
+    min-height: calc(100vh - 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.welcome-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 38px 32px;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: 0 16px 40px rgba(31, 28, 66, 0.08);
+    text-align: center;
+}
+
+.dark .welcome-card {
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.welcome-icon-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.welcome-card .eyebrow {
+    margin-bottom: 8px;
+}
+
+.welcome-card h1 {
+    font-family: Manrope, sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -1px;
+    margin: 0 0 8px;
+    color: var(--text);
+}
+
+.welcome-message {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.welcome-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.welcome-form .field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.welcome-form input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 15px;
+    box-sizing: border-box;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.welcome-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.welcome-error-msg {
+    color: var(--danger);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.4;
+}
+
+.welcome-submit-btn {
+    margin-top: 6px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.welcome-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+    .welcome-card {
+        padding: 28px 20px;
+        border-radius: 20px;
+    }
+    .welcome-card h1 {
+        font-size: 24px;
+    }
+}
+
