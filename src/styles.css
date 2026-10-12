@@ -790,6 +790,96 @@ button:disabled {
     padding: 36px 0 24px;
 }
 
+.error-page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0;
+}
+
+.error-card {
+    width: min(100%, 620px);
+    padding: clamp(24px, 5vw, 48px);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.error-illustration {
+    position: relative;
+    width: 110px;
+    height: 100px;
+    margin: 0 auto 25px;
+}
+
+.error-memory-card {
+    position: absolute;
+    display: grid;
+    width: 55px;
+    height: 72px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+
+.error-memory-card-left {
+    top: 16px;
+    left: 3px;
+    transform: rotate(-17deg);
+}
+
+.error-memory-card-right {
+    top: 16px;
+    right: 3px;
+    transform: rotate(17deg);
+}
+
+.error-memory-card-missing {
+    top: 5px;
+    left: 28px;
+    z-index: 1;
+    border: 2px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-family: Manrope, sans-serif;
+    font-size: 34px;
+    font-weight: 800;
+    box-shadow: 0 8px 20px rgba(104, 87, 217, .16);
+}
+
+.error-card h1 {
+    margin: 11px 0;
+    font-family: Manrope, sans-serif;
+    font-size: clamp(26px, 5vw, 38px);
+    line-height: 1.15;
+    letter-spacing: -1.4px;
+}
+
+.error-card p {
+    max-width: 430px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 25px;
+}
+
+.error-actions .btn {
+    min-width: 150px;
+}
+
 .setup-wrap {
     padding: 20px 0 28px;
     max-width: 640px;
@@ -4339,7 +4429,16 @@ button:disabled {
         width: 100%;
     }
 
-    .main-nav .dropdown-menu {
+    .error-card {
+        padding: 25px 18px;
+        border-radius: 17px;
+    }
+
+    .error-card p {
+        font-size: 13px;
+    }
+
+    .dropdown-menu {
         position: static;
         width: 100%;
         min-width: 0;

@@ -73,15 +73,69 @@ const getLeaderboardParams = () => {
     return { tab: null, diff: null };
   }
 };
+const VALID_ROUTES = new Set(['home', 'setup', 'game', 'leaderboard', 'history', 'multiplayer-history', 'profile', 'settings', 'online', 'how-to-play', 'about-developer']);
+const getPageFromPath = (pathname) => {
+  const path = pathname.split('/').filter(Boolean).join('/');
+  if (!path) return 'home';
+  return VALID_ROUTES.has(path) ? path.replaceAll('-', '_') : 'not_found';
+};
+
+export class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    if (import.meta.env.DEV) {
+      console.error('MindFlip caught a rendering error:', error, errorInfo);
+    }
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    const goHome = () => {
+      window.history.pushState(null, '', '/');
+      this.setState({ hasError: false });
+    };
+
+    return (
+      <div className={`app error-boundary-app${readStore().dark ? ' dark' : ''}`}>
+        <main className="container">
+          <section className="error-page" role="alert">
+            <div className="error-card">
+              <div className="error-illustration" aria-hidden="true">
+                <span className="error-memory-card error-memory-card-left" />
+                <span className="error-memory-card error-memory-card-right" />
+                <span className="error-memory-card error-memory-card-missing">?</span>
+              </div>
+              <span className="eyebrow">A LITTLE MIX-UP</span>
+              <h1>Something went wrong</h1>
+              <p>MindFlip hit an unexpected snag. Your saved game data is still safe.</p>
+              <div className="error-actions">
+                <button className="btn primary" onClick={() => this.setState({ hasError: false })}>
+                  <RotateCcw size={16} /> Try Again
+                </button>
+                <button className="btn secondary" onClick={goHome}>
+                  <House size={16} /> Back to Home
+                </button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+}
 
 export default function App() {
   const [persisted, setPersisted] = useState(readStore);
   const [dark, setDark] = useState(readStore().dark ?? false);
   const [sound, setSound] = useState(readStore().sound ?? true);
   const [page, setPage] = useState(() => {
-    const path = window.location.pathname.slice(1);
-    const validPages = ['home', 'setup', 'game', 'leaderboard', 'history', 'multiplayer-history', 'profile', 'settings', 'online', 'how-to-play', 'about-developer'];
-    return validPages.includes(path) ? path.replace('-', '_') : 'home';
+    return getPageFromPath(window.location.pathname);
   });
   const previousPage = useRef(page);
   useLayoutEffect(() => {
@@ -203,9 +257,7 @@ export default function App() {
   useEffect(() => {
     document.title = 'MindFlip — by JB Devs';
     const handlePopState = () => {
-      const path = window.location.pathname.slice(1);
-      const validPages = ['home', 'setup', 'game', 'leaderboard', 'history', 'multiplayer-history', 'profile', 'settings', 'online', 'how-to-play', 'about-developer'];
-      const targetPage = validPages.includes(path) ? path.replace('-', '_') : 'home';
+      const targetPage = getPageFromPath(window.location.pathname);
       setPage(targetPage);
       if (targetPage === 'leaderboard') {
         const { tab, diff } = getLeaderboardParams();
@@ -688,7 +740,7 @@ export default function App() {
   const maxDesktopBoardHeight = gridRows * 155 + (gridRows - 1) * gridGap + gridPadding * 2 + 2;
 
   return <div className={`${dark ? 'app dark' : 'app'} ${isGameplayActive ? 'immersive-mode' : ''}`}>
-    {!isGameFlow && <header className="topbar" ref={headerRef}>
+    {!isGameFlow && page !== 'not_found' && <header className="topbar" ref={headerRef}>
       <button className="brand" onClick={() => nav('home')} aria-label="MindFlip home"><span className="brand-mark"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>MindFlip</strong><small>by JB Devs</small></span></button>
       <nav id="main-navigation" className={`main-nav${mobileMenuOpen ? ' mobile-open' : ''}`} aria-label="Main navigation">
         <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('home'); setMobileMenuOpen(false); }}><House size={16} /> Home</button>
@@ -714,6 +766,25 @@ export default function App() {
     </header>}
 
     <main className="container">
+      {page === 'not_found' && (
+        <section className="error-page" aria-labelledby="not-found-title">
+          <div className="error-card">
+            <div className="error-illustration" aria-hidden="true">
+              <span className="error-memory-card error-memory-card-left" />
+              <span className="error-memory-card error-memory-card-right" />
+              <span className="error-memory-card error-memory-card-missing">?</span>
+            </div>
+            <span className="eyebrow">MEMORY NOT FOUND</span>
+            <h1 id="not-found-title">404 - Page Not Found</h1>
+            <p>Looks like this page has wandered off the board. It doesn’t exist, but your next game is just a click away.</p>
+            <div className="error-actions">
+              <button className="btn primary" onClick={() => nav('home')}>
+                <House size={16} /> Back to Home
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       {page === 'home' && <>
         <section className="section-block game-modes-block">
           <div className="section-heading">
@@ -1550,7 +1621,7 @@ export default function App() {
         </div>
       </section>}
     </main>
-    {!isGameFlow && page !== 'settings' && page !== 'profile' && <footer className="footer-new">
+    {!isGameFlow && page !== 'settings' && page !== 'profile' && page !== 'not_found' && <footer className="footer-new">
       <div className="footer-content">
         <div className="footer-brand-area">
           <div className="footer-brand" style={{ marginBottom: '12px' }}>
