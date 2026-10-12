@@ -1824,16 +1824,6 @@ button:disabled {
     padding-left: 2px;
 }
 
-.leader-row.overall-row {
-    grid-template-columns: 55px minmax(110px, 1.8fr) 85px 60px 65px 36px;
-    gap: 10px;
-    transition: background 0.15s ease;
-}
-
-.leader-row.overall-row:hover {
-    background: rgba(124, 58, 237, 0.03);
-}
-
 .row-toggle-btn {
     display: inline-flex;
     align-items: center;
@@ -3515,12 +3505,6 @@ button:disabled {
         min-height: 48px;
     }
 
-    .leader-row.overall-row {
-        min-width: 0;
-        grid-template-columns: 40px minmax(70px, 1.4fr) 52px 36px 42px 28px;
-        gap: 4px;
-    }
-
     .leader-row.solo-row {
         min-width: 0;
         grid-template-columns: 40px minmax(75px, 1.6fr) 68px 28px;
@@ -4468,7 +4452,6 @@ button:disabled {
         min-width: 600px;
     }
 
-    .leader-row.overall-row,
     .leader-row.solo-row,
     .leader-row.solo-clean-row,
     .leader-row.multi-top-row {

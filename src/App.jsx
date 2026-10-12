@@ -186,7 +186,7 @@ export default function App() {
     const { tab } = getLeaderboardParams();
     if (tab === 'solo') return 'solo';
     if (tab === 'multiplayer') return 'multiplayer';
-    return 'overall';
+    return 'solo';
   });
   const [multiplayerView, setMultiplayerView] = useState('top_players');
   const [expandedPlayer, setExpandedPlayer] = useState(null);
@@ -272,7 +272,7 @@ export default function App() {
           setLeaderboardMode('multiplayer');
           setMultiplayerView('top_players');
         } else {
-          setLeaderboardMode('overall');
+          setLeaderboardMode('solo');
           setLeaderboardFilter('Easy');
         }
       }
@@ -447,8 +447,7 @@ export default function App() {
   };
   const resetGame = () => { startGame(mode); };
   const copyRoom = async () => { try { await navigator.clipboard.writeText(roomCode); toast('Room code copied.'); } catch { toast(`Share this code: ${roomCode}`); } };
-  const createRoom = () => { const code = Math.random().toString(36).slice(2, 8).toUpperCase(); setRoomCode(code); setRoomCreated(true); toast('Demo room created locally. Online sync needs Supabase setup.'); };
-  const { bests, multiBests, multiTopPlayers, multiMatches, overallStats, historyList, allPlayers, multiWins } = useMemo(() => {
+  const { bests, multiBests, multiTopPlayers, multiMatches, historyList, allPlayers, multiWins } = useMemo(() => {
     const seenIds = new Set();
     const cleanHistory = [...(persisted.history || [])].filter(r => {
       if (!r.id) return true;
@@ -464,13 +463,16 @@ export default function App() {
     const multiPlayerDiffs = new window.Map();
 
     cleanHistory.forEach(r => {
-      if (r.score === 0) return;
+      if (!r || r.score === 0) return;
+      const isSolo = r.mode === 'solo';
+      const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
+      if (!isSolo && !isMulti) return;
       const pName = (r.name || 'Player').trim();
       const key = `${pName}-${r.difficulty}`;
-      if (r.mode === 'solo') {
+      if (isSolo) {
         if (!playerDiffs.has(key)) playerDiffs.set(key, []);
         playerDiffs.get(key).push(r);
-      } else {
+      } else if (isMulti) {
         if (!multiPlayerDiffs.has(key)) multiPlayerDiffs.set(key, []);
         multiPlayerDiffs.get(key).push(r);
       }
@@ -517,32 +519,10 @@ export default function App() {
       return b.completedPairs - a.completedPairs;
     });
 
-    const overallStatsMap = new window.Map();
-    cleanHistory.forEach(r => {
-      const pName = (r.name || 'Player').trim();
-      
-      let stat = overallStatsMap.get(pName);
-      if (!stat) {
-        stat = { name: pName, totalScore: 0, gamesPlayed: 0, completedPairs: 0, moves: 0, wins: multiWins[pName] || 0 };
-        overallStatsMap.set(pName, stat);
-      }
-      
-      stat.totalScore += r.score;
-      stat.gamesPlayed += 1;
-      stat.completedPairs += r.completedPairs || 0;
-      stat.moves += r.moves || 0;
-    });
-
-    let overallStatsArray = Array.from(overallStatsMap.values());
-    overallStatsArray.sort((a, b) => {
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.completedPairs - a.completedPairs;
-    });
-
+    const isMultiMode = (r) => Boolean(r && (r.mode === 'local' || r.mode === 'multiplayer'));
     const multiPlayerStatsMap = new window.Map();
     const seenMatchPlayer = new Set();
-    cleanHistory.filter(r => r.mode !== 'solo').forEach(r => {
+    cleanHistory.filter(isMultiMode).forEach(r => {
       const pName = (r.name || 'Player').trim();
       const matchKey = `${r.sessionId || `legacy-${r.date}`}-${pName}`;
       if (seenMatchPlayer.has(matchKey)) return;
@@ -588,7 +568,7 @@ export default function App() {
       multiTopPlayers[i].displayRank = currentMultiRank;
     }
 
-    const multiRecords = cleanHistory.filter(r => r.mode !== 'solo');
+    const multiRecords = cleanHistory.filter(isMultiMode);
     const multiMatchesMap = new window.Map();
     multiRecords.forEach(r => {
       const k = r.sessionId || `legacy-${r.date}`;
@@ -668,7 +648,7 @@ export default function App() {
     if (historySort === 'score') hList.sort((a, b) => b.score - a.score);
     else if (historySort === 'time') hList.sort((a, b) => (a.seconds || Infinity) - (b.seconds || Infinity));
 
-    return { bests: bestsArray.slice(0, 50), multiBests: multiBestsArray.slice(0, 50), multiTopPlayers: multiTopPlayers.slice(0, 50), multiMatches, overallStats: overallStatsArray.slice(0, 50), historyList: hList, allPlayers: Array.from(pSet), multiWins };
+    return { bests: bestsArray.slice(0, 50), multiBests: multiBestsArray.slice(0, 50), multiTopPlayers: multiTopPlayers.slice(0, 50), multiMatches, historyList: hList, allPlayers: Array.from(pSet), multiWins };
   }, [persisted.history, persisted.multiplayerWins, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const renderRankBadge = (rank) => {
@@ -696,7 +676,7 @@ export default function App() {
         setLeaderboardMode('multiplayer');
         setMultiplayerView('top_players');
       } else {
-        setLeaderboardMode('overall');
+        setLeaderboardMode('solo');
         setLeaderboardFilter('Easy');
         setMultiplayerView('top_players');
       }
@@ -865,74 +845,7 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools">{mode === 'solo' && <button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button>}<span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'overall' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('overall')} style={{ padding: '6px 12px', fontSize: '11px' }}>Overall</button><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>{leaderboardMode === 'overall' ? 'Aggregate performance across all recorded games' : leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : multiplayerView === 'top_players' ? 'Player rankings across all multiplayer games · Local device' : 'Full match history and participant breakdowns · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}{leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
-      {leaderboardMode === 'overall' && (
-        overallStats.length ? (
-          <div className="leaderboard-list">
-            <div className="leader-row overall-row table-header">
-              <span>Rank</span>
-              <span>Player</span>
-              <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Total Score</span>
-              <span style={{ textAlign: 'right' }}>Games</span>
-              <span style={{ textAlign: 'right' }} title="Confirmed multiplayer wins only">MP Wins</span>
-              <span style={{ textAlign: 'center' }}>Details</span>
-            </div>
-            {overallStats.map((row, i) => {
-              const acc = row.moves ? Math.round((row.completedPairs / row.moves) * 100) : 0;
-              const isExpanded = expandedPlayer === row.name;
-              return (
-                <React.Fragment key={row.name || i}>
-                  <div className="leader-row overall-row" style={{ cursor: 'pointer' }} onClick={() => setExpandedPlayer(isExpanded ? null : row.name)}>
-                    <span className="rank-cell">{renderRankBadge(i + 1)}</span>
-                    <span className="leader-player-clean" title={row.name}>
-                      <span className="player-display-name">{row.name || 'Player'}</span>
-                    </span>
-                    <strong style={{ textAlign: 'right' }}>{row.totalScore.toLocaleString()}</strong>
-                    <span style={{ textAlign: 'right' }}>{row.gamesPlayed}</span>
-                    <span style={{ textAlign: 'right' }}>{row.wins || 0}</span>
-                    <span style={{ textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        className="row-toggle-btn"
-                        aria-label={isExpanded ? `Hide statistics for ${row.name}` : `View statistics for ${row.name}`}
-                        onClick={(e) => { e.stopPropagation(); setExpandedPlayer(isExpanded ? null : row.name); }}
-                      >
-                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </button>
-                    </span>
-                  </div>
-                  {isExpanded && (
-                    <div className="player-expanded-panel">
-                      <div className="expanded-stat">
-                        <small>Pairs Matched</small>
-                        <strong>{row.completedPairs.toLocaleString()}</strong>
-                      </div>
-                      <div className="expanded-stat">
-                        <small>Total Moves</small>
-                        <strong>{row.moves.toLocaleString()}</strong>
-                      </div>
-                      <div className="expanded-stat">
-                        <small>Overall Accuracy</small>
-                        <strong>{acc}%</strong>
-                      </div>
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
-            <p style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'right', padding: '10px 16px', margin: 0 }}>
-              * MP Wins represents confirmed multiplayer wins only. Solo games are not counted as MP wins.
-            </p>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <span className="empty-icon"><Trophy size={24} /></span>
-            <h3>No scores yet</h3>
-            <p>Play your first round and your overall standing will show up here.</p>
-            <button className="btn primary" onClick={() => nav('setup')}>Start a game</button>
-          </div>
-        )
-      )}
+      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>{leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : multiplayerView === 'top_players' ? 'Player rankings across all multiplayer games · Local device' : 'Full match history and participant breakdowns · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}{leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
       {leaderboardMode === 'solo' && (
         bests.length ? (
           <div className="leaderboard-list">
@@ -974,10 +887,6 @@ export default function App() {
                   </div>
                   {isExpanded && (
                     <div className="player-expanded-panel solo-expanded-panel">
-                      <div className="expanded-stat">
-                        <small>Best Score</small>
-                        <strong>{row.score.toLocaleString()}</strong>
-                      </div>
                       <div className="expanded-stat">
                         <small>Completion Time</small>
                         <strong>{row.seconds ? formatTime(row.seconds) : '—'}</strong>
