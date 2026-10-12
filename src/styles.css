@@ -616,9 +616,22 @@ button:disabled {
     background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface))
 }
 
-.mode-card-online:hover {
+.mode-card-online:hover:not(:disabled) {
     border-color: var(--accent);
     box-shadow: 0 6px 22px rgba(104, 87, 217, 0.16)
+}
+
+.mode-card-online:disabled,
+.mode-card-online.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.mode-card-online:disabled:hover,
+.mode-card-online.is-disabled:hover {
+    transform: none;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    box-shadow: none;
 }
 
 .dark .mode-card-online {
@@ -626,9 +639,16 @@ button:disabled {
     border-color: color-mix(in srgb, var(--accent) 42%, var(--line))
 }
 
-.dark .mode-card-online:hover {
+.dark .mode-card-online:hover:not(:disabled) {
     border-color: var(--accent);
     box-shadow: 0 6px 22px rgba(139, 124, 247, 0.22)
+}
+
+.dark .mode-card-online:disabled:hover,
+.dark .mode-card-online.is-disabled:hover {
+    transform: none;
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+    box-shadow: none;
 }
 
 .mode-icon {
@@ -4747,5 +4767,438 @@ button:disabled {
 
     .footer-bottom span {
         font-size: 11px !important;
+    }
+}
+
+/* ==========================================================================
+   Game Guide Styles
+   ========================================================================== */
+
+.guide-hero-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.guide-highlights-grid {
+    display: grid;
+    grid-templateColumns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.guide-highlight-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: border-color .15s ease;
+}
+
+.guide-highlight-card:hover {
+    border-color: var(--accent);
+}
+
+.guide-highlight-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.guide-highlight-text strong {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+}
+
+.guide-highlight-text small {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.guide-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.guide-step-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+}
+
+.guide-step-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.guide-step-num {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: .8px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.guide-step-card h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.guide-step-card p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--muted);
+}
+
+.guide-diff-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.guide-diff-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform .15s ease, border-color .15s ease;
+}
+
+.guide-diff-card:hover {
+    border-color: var(--accent);
+}
+
+.guide-diff-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.guide-diff-header strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.guide-diff-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.guide-diff-specs span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.guide-diff-specs strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.guide-modes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.guide-mode-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.guide-mode-card h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-mode-card p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.guide-mode-card ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.guide-two-col {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.guide-card-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.guide-card-panel h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.guide-card-panel p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.guide-panel-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.65;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.guide-themes-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.guide-theme-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.guide-tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.guide-tip-item {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.guide-tip-item strong {
+    display: block;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.guide-tip-item span {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.45;
+    display: block;
+}
+
+.guide-bottom-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .guide-highlights-grid,
+    .guide-steps-grid,
+    .guide-diff-grid,
+    .guide-modes-grid,
+    .guide-two-col,
+    .guide-tips-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .guide-card-panel {
+        padding: 16px;
+    }
+}
+
+/* Home Dashboard - Your Progress Section */
+.home-progress {
+    margin-bottom: 38px;
+}
+
+.home-progress-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    transition: border-color .15s ease;
+}
+
+.dark .home-progress-card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.home-progress-header {
+    margin-bottom: 16px;
+}
+
+.home-progress-header .eyebrow {
+    margin-bottom: 4px;
+}
+
+.home-progress-header h3 {
+    font-family: Manrope, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.4px;
+    color: var(--text);
+}
+
+.home-progress-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.home-progress-item {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 13px 16px;
+}
+
+.home-progress-item small {
+    display: block;
+    color: var(--muted);
+    font-size: 11.5px;
+    margin-bottom: 4px;
+}
+
+.home-progress-item strong {
+    font-family: Manrope, sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+}
+
+.home-progress-summary {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--muted);
+}
+
+/* Tablet responsiveness: 581px to 900px */
+@media (min-width: 581px) and (max-width: 900px) {
+    .mode-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .mode-card-online {
+        grid-column: 1 / -1;
+    }
+
+    .quick-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+
+/* Mobile adjustments for home progress */
+@media (max-width: 580px) {
+    .home-progress {
+        margin-bottom: 28px;
+    }
+
+    .home-progress-card {
+        padding: 16px 18px;
+        border-radius: 15px;
+    }
+
+    .home-progress-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .home-progress-item {
+        padding: 11px 14px;
+    }
+
+    .home-progress-item strong {
+        font-size: 17px;
+    }
+
+    .home-progress-summary {
+        font-size: 12px;
+        line-height: 1.5;
     }
 }

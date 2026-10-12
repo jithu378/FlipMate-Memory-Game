@@ -5,7 +5,7 @@ import {
   Sparkles, Medal, ChevronRight, X, Check, Copy, Info, House, BarChart3,
   Trash2, LogIn, ArrowRight, User,
   Circle, Square, Triangle, Pentagon, Hexagon, Octagon, Star, Diamond, CircleDot, CircleDashed, SquareDashed, Shapes, RectangleHorizontal, RectangleVertical, Plus, Minus, Equal, Asterisk, Cross, Divide, Percent, Hash, Slash,
-  Heart, Cloud, Umbrella, Music, Droplet, Flame, Snowflake, Shield, Crown, Anchor, Flag, Gem, Bell, AlertCircle,
+  Heart, Cloud, Umbrella, Music, Droplet, Flame, Snowflake, Shield, ShieldCheck, Crown, Anchor, Flag, Gem, Bell, AlertCircle,
   Menu,
   Bird, Rabbit, Snail, Turtle, Fish, Rat, Worm, Squirrel, PawPrint, Shell, Cat, Dog, Bug,
   Rocket, Satellite, SatelliteDish, Orbit, Earth, Telescope, MoonStar, StarOff, StarHalf, Space, CloudMoon, CloudSun, SunMoon, SunDim, SunMedium, SunSnow, CloudSunRain, CloudMoonRain, Sunrise, Sunset,
@@ -382,6 +382,102 @@ export class ErrorBoundary extends React.Component {
   }
 }
 
+// Helper to calculate authoritative profile dashboard statistics
+const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
+  const normalizedProfileName = (profileName || '').trim();
+
+  const isCurrentProfileRecord = (r) => {
+    if (!r) return false;
+    if (r.profileId) return r.profileId === currentProfileId;
+    if (r.isProfileOwner === true) return true;
+    const rName = (r.name || 'Player').trim();
+    return Boolean(normalizedProfileName && rName.toLowerCase() === normalizedProfileName.toLowerCase());
+  };
+
+  const seenProfileMatches = new Set();
+  let totalGamesPlayed = 0;
+  let totalPairsMatched = 0;
+  let totalOverallScore = 0;
+  let bestSoloScore = null;
+  const difficultyCounts = {};
+
+  (historyList || []).forEach((r) => {
+    if (!r) return;
+    if (!isCurrentProfileRecord(r)) return;
+
+    const isSolo = r.mode === 'solo';
+    const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
+    if (!isSolo && !isMulti) return;
+
+    const diffConfig = DIFFICULTIES[r.difficulty];
+    const expectedPairs = diffConfig?.pairs;
+    if (expectedPairs == null) return;
+
+    if (isSolo) {
+      const isCompleted = typeof r.completedPairs === 'number'
+        ? r.completedPairs >= expectedPairs
+        : (typeof r.moves === 'number' && r.moves >= expectedPairs && (r.score > 0));
+      if (!isCompleted) return;
+
+      const matchKey = `solo-${r.id || r.sessionId || `${r.date}-${r.score}`}`;
+      if (seenProfileMatches.has(matchKey)) return;
+      seenProfileMatches.add(matchKey);
+
+      totalGamesPlayed += 1;
+      totalPairsMatched += (typeof r.completedPairs === 'number' ? r.completedPairs : expectedPairs);
+      const scoreNum = Number(r.score);
+      if (Number.isFinite(scoreNum)) {
+        totalOverallScore += scoreNum;
+        if (bestSoloScore === null || scoreNum > bestSoloScore) {
+          bestSoloScore = scoreNum;
+        }
+      }
+
+      if (r.difficulty) {
+        difficultyCounts[r.difficulty] = (difficultyCounts[r.difficulty] || 0) + 1;
+      }
+    } else {
+      if (typeof r.completedPairs !== 'number' && typeof r.score !== 'number') return;
+      const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${r.profileId || (r.name || '').trim().toLowerCase()}`;
+      if (seenProfileMatches.has(matchKey)) return;
+      seenProfileMatches.add(matchKey);
+
+      totalGamesPlayed += 1;
+      if (typeof r.completedPairs === 'number' && r.completedPairs > 0) {
+        totalPairsMatched += r.completedPairs;
+      }
+      const scoreNum = Number(r.score);
+      if (Number.isFinite(scoreNum) && scoreNum > 0) {
+        totalOverallScore += scoreNum;
+      }
+
+      if (r.difficulty) {
+        difficultyCounts[r.difficulty] = (difficultyCounts[r.difficulty] || 0) + 1;
+      }
+    }
+  });
+
+  // Calculate most played difficulty only if there's a clear leader
+  let mostPlayedDifficulty = null;
+  const diffEntries = Object.entries(difficultyCounts);
+  if (diffEntries.length > 0) {
+    diffEntries.sort((a, b) => b[1] - a[1]);
+    const maxCount = diffEntries[0][1];
+    const topDiffs = diffEntries.filter(([, count]) => count === maxCount);
+    if (topDiffs.length === 1) {
+      mostPlayedDifficulty = topDiffs[0][0];
+    }
+  }
+
+  return {
+    gamesPlayed: totalGamesPlayed,
+    pairsMatched: totalPairsMatched,
+    overallScore: totalOverallScore,
+    bestSoloScore,
+    mostPlayedDifficulty
+  };
+};
+
 export default function App() {
   const [persisted, setPersisted] = useState(readStore);
   const [dark, setDark] = useState(readStore().dark ?? false);
@@ -430,6 +526,10 @@ export default function App() {
   const [editNameInput, setEditNameInput] = useState(() => persisted.displayName || 'Player');
   const [profileNameError, setProfileNameError] = useState('');
   const currentProfileId = persisted.profileId || 'profile-default';
+
+  const homeStats = useMemo(() => {
+    return getProfileHomeStats(persisted.history, currentProfileId, profileName);
+  }, [persisted.history, currentProfileId, profileName]);
   const [leaderboardFilter, setLeaderboardFilter] = useState(() => {
     const { tab, diff } = getLeaderboardParams();
     if (tab === 'solo' && diff && Object.keys(DIFFICULTIES).includes(diff)) {
@@ -1038,7 +1138,7 @@ export default function App() {
             <button className={page === 'multiplayer_history' ? 'dropdown-item active' : 'dropdown-item'} onClick={() => { nav('multiplayer_history'); setHistoryMenuOpen(false); setMobileMenuOpen(false); }}><Users size={14} /> Multiplayer History</button>
           </div>}
         </div>
-        <button className={page === 'how_to_play' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('how_to_play'); setMobileMenuOpen(false); }}><Book size={16} /> How to Play</button>
+        <button className={page === 'how_to_play' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('how_to_play'); setMobileMenuOpen(false); }}><Book size={16} /> Game Guide</button>
         <button className={page === 'about_developer' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('about_developer'); setMobileMenuOpen(false); }}><Code2 size={16} /> About Developer</button>
         <button className={page === 'profile' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('profile'); setMobileMenuOpen(false); }}><CircleUserRound size={16} /> Profile</button>
         <button className={page === 'settings' ? 'nav-link active mobile-nav-settings' : 'nav-link mobile-nav-settings'} onClick={() => { nav('settings'); setMobileMenuOpen(false); }}><Settings size={16} /> Settings</button>
@@ -1075,7 +1175,7 @@ export default function App() {
         <section className="section-block game-modes-block">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">GAME MODES</span>
+              <span className="eyebrow">YOUR DASHBOARD</span>
               <h2>Choose how you want to play</h2>
               <p className="section-subtext">Pick a mode and get ready to test your memory.</p>
             </div>
@@ -1093,20 +1193,67 @@ export default function App() {
               <span className="mode-description">Take turns with 2–4 players locally on one device.</span>
               <span className="mode-footer">Play together <ChevronRight size={16} /></span>
             </button>
-            <button className="mode-card mode-card-online" onClick={() => nav('online')}>
+            <button
+              className="mode-card mode-card-online is-disabled"
+              disabled
+              aria-disabled="true"
+              title="Online Multiplayer is coming soon"
+            >
               <span className="mode-icon lavender"><Globe2 size={22} /></span>
               <span className="coming-badge">Coming Soon</span>
               <span className="mode-title">Online Multiplayer</span>
               <span className="mode-description">Create private rooms and challenge friends on their own devices.</span>
-              <span className="mode-footer">Coming soon <ChevronRight size={16} /></span>
+              <span className="mode-footer">Unavailable for now</span>
             </button>
           </div>
         </section>
 
-        <section className="quick-stats">
-          <div className="stat"><span className="stat-icon"><Target size={18} /></span><div><small>Games played</small><strong>{persisted.gamesPlayed || 0}</strong></div></div>
-          <div className="stat"><span className="stat-icon"><Trophy size={18} /></span><div><small>Personal best</small><strong>{bestSolo ? bestSolo.score.toLocaleString() : '—'}</strong></div></div>
-          <div className="stat"><span className="stat-icon"><Sparkles size={18} /></span><div><small>Pairs matched</small><strong>{persisted.totalPairs || 0}</strong></div></div>
+        <section className="quick-stats" aria-label="Player statistics">
+          <div className="stat">
+            <span className="stat-icon"><Target size={18} /></span>
+            <div>
+              <small>Games Played</small>
+              <strong>{homeStats.gamesPlayed}</strong>
+            </div>
+          </div>
+          <div className="stat">
+            <span className="stat-icon"><Trophy size={18} /></span>
+            <div>
+              <small>Overall Score</small>
+              <strong>{homeStats.overallScore.toLocaleString()}</strong>
+            </div>
+          </div>
+          <div className="stat">
+            <span className="stat-icon"><Sparkles size={18} /></span>
+            <div>
+              <small>Pairs Matched</small>
+              <strong>{homeStats.pairsMatched.toLocaleString()}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="home-progress" aria-label="Your Progress">
+          <div className="home-progress-card">
+            <div className="home-progress-header">
+              <span className="eyebrow">YOUR PROGRESS</span>
+              <h3>Performance Highlights</h3>
+            </div>
+            <div className="home-progress-grid">
+              <div className="home-progress-item">
+                <small>Best Solo Score</small>
+                <strong>{homeStats.bestSoloScore === null ? '—' : homeStats.bestSoloScore.toLocaleString()}</strong>
+              </div>
+              <div className="home-progress-item">
+                <small>Most-Played Difficulty</small>
+                <strong>{homeStats.mostPlayedDifficulty || '—'}</strong>
+              </div>
+            </div>
+            <p className="home-progress-summary">
+              {homeStats.gamesPlayed > 0
+                ? `You have completed ${homeStats.gamesPlayed} ${homeStats.gamesPlayed === 1 ? 'match' : 'matches'} and matched ${homeStats.pairsMatched.toLocaleString()} ${homeStats.pairsMatched === 1 ? 'pair' : 'pairs'}.`
+                : 'Complete a match to start building your saved progress.'}
+            </p>
+          </div>
         </section>
 
         <div className="hero-art home-illustration" aria-label="Decorative memory cards">
@@ -1836,7 +1983,220 @@ export default function App() {
       )}
 
       {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title" style={{ textAlign: 'center', margin: '40px 0 20px' }}><span className="local-badge" style={{ display: 'inline-block', marginBottom: '16px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Sparkles size={14} /> COMING SOON</span><h1 style={{ marginBottom: '12px' }}>Online Multiplayer</h1><p style={{ maxWidth: '400px', margin: '0 auto', fontSize: '15px' }}>Play MindFlip with friends, wherever they are.</p></div><div className="settings-card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Globe2 size={32} /></div><p style={{ color: 'var(--muted)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '400px', margin: '0 auto' }}>We're working on online multiplayer, including private rooms, friend invitations, and real-time matches. Stay tuned for updates.</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', textAlign: 'left', marginBottom: '32px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Lock size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Private Rooms</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Users size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Invite Friends</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Zap size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Real-Time Matches</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Trophy size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Online Leaderboards</span></div></div><button className="btn primary" onClick={() => nav('home')} style={{ padding: '0 32px' }}>Back to Home</button></div></section>}
-      {page === 'how_to_play' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">LEARN THE RULES</span><h1>How to Play MindFlip</h1><p>Train your memory, sharpen your focus, and make every move count.</p></div><div className="section-block"><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px' }}><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Info size={14} /></span><div><h3>Game Basics</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Cards are placed face down.</li><li>Select two cards to reveal them.</li><li>If they match, they remain matched.</li><li>If they do not match, they are turned face down again.</li><li>Remember card positions to find matching pairs.</li><li>Complete all pairs before the timer runs out.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><UserRound size={14} /></span><div><h3>Game Modes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Solo:</strong> Play alone and challenge your memory.</li><li><strong>Local Multiplayer:</strong> Play with 2–4 players on the same device.</li><li><strong>Online Multiplayer:</strong> (Coming Soon)</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Zap size={14} /></span><div><h3>Difficulty Levels</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Easy:</strong> 4 × 3 grid, 12 cards, 6 pairs, 2 minutes.</li><li><strong>Normal:</strong> 4 × 4 grid, 16 cards, 8 pairs, 3 minutes.</li><li><strong>Medium:</strong> 6 × 4 grid, 24 cards, 12 pairs, 4 minutes.</li><li><strong>Hard:</strong> 6 × 6 grid, 36 cards, 18 pairs, 6 minutes.</li><li><strong>Extreme:</strong> 8 × 6 grid, 48 cards, 24 pairs, 8 minutes.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Sparkles size={14} /></span><div><h3>Card Themes</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li><strong>Random:</strong> Selects one theme for the current match.</li><li><strong>Symbols</strong></li><li><strong>Nature</strong></li><li><strong>Tech</strong></li><li><strong>Everyday</strong></li></ul><p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Random chooses a theme for the match and does not change the theme between cards during that match.</p></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Target size={14} /></span><div><h3>Scoring and Accuracy</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>A move represents one completed attempt involving two cards.</li><li>Points are awarded for pairs, with faster completion and fewer moves yielding a higher score.</li><li><strong>Accuracy:</strong> successful matching attempts divided by total completed attempts, multiplied by 100.</li><li>If no attempts have been completed, accuracy is 0%.</li></ul></div><div className="setup-panel"><div className="panel-heading"><span className="step-number"><Users size={14} /></span><div><h3>Local Multiplayer Rules</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Each player has their own score and statistics.</li><li>A correct match keeps the turn with the current player (if configured).</li><li>A mismatch passes the turn to the next player.</li><li>The game ends when all pairs are matched or the overall timer runs out.</li></ul></div><div className="setup-panel" style={{ gridColumn: '1 / -1' }}><div className="panel-heading"><span className="step-number"><Star size={14} /></span><div><h3>Tips for Better Results</h3></div></div><ul style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, paddingLeft: '16px', lineHeight: '1.6' }}><li>Pay attention to card positions.</li><li>Start with the easiest difficulty if you are new.</li><li>Avoid random guessing.</li><li>Improve your accuracy by remembering previously revealed cards.</li></ul><div style={{ display: 'flex', gap: '12px', marginTop: '24px', flexWrap: 'wrap' }}><button className="btn primary" onClick={() => { setMode('solo'); nav('setup'); }}>Play Solo <ChevronRight size={17} /></button><button className="btn secondary" onClick={() => { setMode('local'); nav('setup'); }}><Users size={17} /> Play Together</button></div></div></div></div></section>}
+      {page === 'how_to_play' && (
+        <section className="content-page">
+          <button className="back-link" onClick={() => nav('home')}>
+            <ArrowLeft size={16} /> Back home
+          </button>
+
+          {/* 1. HERO */}
+          <div className="page-title">
+            <span className="eyebrow">OFFICIAL MANUAL</span>
+            <h1>MindFlip Game Guide</h1>
+            <p>Everything you need to sharpen your memory and master the game.</p>
+          </div>
+
+          <div className="guide-hero-banner">
+            <div className="guide-highlights-grid">
+              <div className="guide-highlight-card">
+                <span className="guide-highlight-icon lavender"><Brain size={18} /></span>
+                <div className="guide-highlight-text">
+                  <strong>Memory Matching</strong>
+                  <small>Classic card pairs with modern scoring</small>
+                </div>
+              </div>
+              <div className="guide-highlight-card">
+                <span className="guide-highlight-icon mint"><Zap size={18} /></span>
+                <div className="guide-highlight-text">
+                  <strong>5 Difficulty Levels</strong>
+                  <small>Easy to Extreme with timed challenges</small>
+                </div>
+              </div>
+              <div className="guide-highlight-card">
+                <span className="guide-highlight-icon peach"><Users size={18} /></span>
+                <div className="guide-highlight-text">
+                  <strong>Solo & Multiplayer</strong>
+                  <small>Personal mastery or pass-and-play fun</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="section-block" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* 2. HOW TO PLAY STEPS */}
+            <div className="guide-card-panel">
+              <h3><Info size={18} style={{ color: 'var(--accent)' }} /> How to Play</h3>
+              <p>Master the fundamental matching loop in three simple steps:</p>
+              <div className="guide-steps-grid">
+                <div className="guide-step-card">
+                  <div className="guide-step-top">
+                    <span className="guide-step-num">STEP 01</span>
+                    <RotateCcw size={16} style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <h4>Flip</h4>
+                  <p>Select any two face-down cards on the grid to reveal their hidden icons.</p>
+                </div>
+                <div className="guide-step-card">
+                  <div className="guide-step-top">
+                    <span className="guide-step-num">STEP 02</span>
+                    <Check size={16} style={{ color: 'var(--green)' }} />
+                  </div>
+                  <h4>Match</h4>
+                  <p>Matching cards remain permanently revealed. Non-matching cards turn face down again.</p>
+                </div>
+                <div className="guide-step-card">
+                  <div className="guide-step-top">
+                    <span className="guide-step-num">STEP 03</span>
+                    <Trophy size={16} style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <h4>Complete</h4>
+                  <p>Locate and match all pairs on the board before the round timer expires.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. DIFFICULTY LEVELS */}
+            <div className="guide-card-panel">
+              <h3><Zap size={18} style={{ color: 'var(--accent)' }} /> Difficulty Levels</h3>
+              <p>Choose from five calibrated difficulty tiers based directly on official game configurations:</p>
+              <div className="guide-diff-grid">
+                {Object.entries(DIFFICULTIES).map(([diffName, config]) => {
+                  const dimensions = diffName === 'Easy' ? '4 × 3' : diffName === 'Normal' ? '4 × 4' : diffName === 'Medium' ? '6 × 4' : diffName === 'Hard' ? '6 × 6' : '8 × 6';
+                  return (
+                    <div key={diffName} className="guide-diff-card">
+                      <div className="guide-diff-header">
+                        <strong>{diffName}</strong>
+                        <span className="local-badge" style={{ padding: '2px 7px', fontSize: '11px' }}>{config.multiplier}× mult</span>
+                      </div>
+                      <div className="guide-diff-specs">
+                        <span>Grid Size: <strong>{dimensions}</strong></span>
+                        <span>Total Cards: <strong>{config.pairs * 2}</strong></span>
+                        <span>Pairs to Match: <strong>{config.pairs}</strong></span>
+                        <span>Time Limit: <strong>{Math.floor(config.time / 60)} min</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. GAME MODES */}
+            <div className="guide-card-panel">
+              <h3><Users size={18} style={{ color: 'var(--accent)' }} /> Game Modes</h3>
+              <div className="guide-modes-grid">
+                <div className="guide-mode-card">
+                  <h4><UserRound size={17} style={{ color: 'var(--accent)' }} /> Solo Challenge</h4>
+                  <p>Race against the countdown timer to find all pairs, minimize your total moves, and set record personal best scores.</p>
+                  <ul>
+                    <li>Leaderboard bonus for speed and high accuracy</li>
+                    <li>One optional hint available per match</li>
+                    <li>Individual match performance stored in your history</li>
+                  </ul>
+                </div>
+                <div className="guide-mode-card">
+                  <h4><Users size={17} style={{ color: 'var(--accent)' }} /> Local Multiplayer</h4>
+                  <p>Pass-and-play competition for 2 to 4 players on a shared device with customized player names.</p>
+                  <ul>
+                    <li>Turn-based rotation with optional extra-turn on match</li>
+                    <li>Separate move counters and match score per player</li>
+                    <li>Independent multiplayer win tracking</li>
+                  </ul>
+                </div>
+                <div className="guide-mode-card" style={{ opacity: 0.9 }}>
+                  <h4>
+                    <Globe2 size={17} style={{ color: 'var(--accent)' }} />
+                    <span>Online Multiplayer</span>
+                    <span className="local-badge" style={{ fontSize: '10px', marginLeft: 'auto' }}>In Development</span>
+                  </h4>
+                  <p>An online multiplayer mode is currently in active development to allow remote matchmaking and private rooms across devices.</p>
+                  <ul style={{ color: 'var(--muted)', fontStyle: 'italic' }}>
+                    <li>Feature is not currently available</li>
+                    <li>No official release date has been confirmed</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. SCORING AND ACCURACY & 6. CARD THEMES */}
+            <div className="guide-two-col">
+              <div className="guide-card-panel">
+                <h3><Target size={18} style={{ color: 'var(--accent)' }} /> Scoring and Accuracy</h3>
+                <p>MindFlip rewards both speed and disciplined memory recall:</p>
+                <ul className="guide-panel-list">
+                  <li><strong>Move:</strong> One attempt turning over two cards counts as exactly one move.</li>
+                  <li><strong>Formula:</strong> Points scale with matched pairs and difficulty multiplier, with deductions for extra moves and elapsed seconds: <code>(Pairs × 100 × Multiplier) - (Moves × 5) - Seconds</code>.</li>
+                  <li><strong>Accuracy:</strong> Calculated precisely as completed pairs divided by total moves multiplied by 100 <code>((Pairs / Moves) × 100)</code>.</li>
+                  <li><strong>Tie-Breaking:</strong> Multiplayer standings rank by pairs, score, accuracy, and fewest moves.</li>
+                </ul>
+              </div>
+
+              <div className="guide-card-panel">
+                <h3><Sparkles size={18} style={{ color: 'var(--accent)' }} /> Card Themes</h3>
+                <p>Customize the look and feel of the board with distinct icon sets:</p>
+                <div className="guide-themes-pills">
+                  <span className="guide-theme-pill"><Sparkles size={13} style={{ color: 'var(--accent)' }} /> Random</span>
+                  {Object.keys(THEMES).map((themeName) => (
+                    <span key={themeName} className="guide-theme-pill">
+                      {themeName === 'Symbols' ? <Circle size={13} /> : themeName === 'Space' ? <Rocket size={13} /> : themeName === 'Tech' ? <Laptop size={13} /> : themeName === 'Everyday' ? <Coffee size={13} /> : <Cat size={13} />}
+                      {themeName}
+                    </span>
+                  ))}
+                </div>
+                <p style={{ marginTop: '8px', fontSize: '12px' }}>
+                  Choosing <strong>Random</strong> selects one consistent theme for that match and keeps it uniform across all cards until the game finishes.
+                </p>
+              </div>
+            </div>
+
+            {/* 7. RESPECTFUL PLAYER NAMES & 8. TIPS FOR BETTER RESULTS */}
+            <div className="guide-two-col">
+              <div className="guide-card-panel">
+                <h3><ShieldCheck size={18} style={{ color: 'var(--accent)' }} /> Respectful Player Names</h3>
+                <p>MindFlip maintains a family-friendly, welcoming environment for everyone:</p>
+                <ul className="guide-panel-list">
+                  <li><strong>Prohibited Terms:</strong> Offensive, abusive, vulgar, or insulting terms are strictly disallowed in both profile and in-game names.</li>
+                  <li><strong>Reserved Identities:</strong> Developer and brand identities (such as <strong>JB Devs</strong>) are protected against impersonation.</li>
+                  <li><strong>Multilingual Filtering:</strong> Validation automatically scans English, Hindi (Devanagari & Hinglish), Malayalam (Script & Manglish), and Tamil terms. Coverage is determined by our curated restricted dictionaries.</li>
+                  <li><strong>Validation Prompts:</strong> If a name is flagged, please select a different appropriate name to continue.</li>
+                </ul>
+              </div>
+
+              <div className="guide-card-panel">
+                <h3><Star size={18} style={{ color: 'var(--accent)' }} /> Tips for Better Results</h3>
+                <p>Improve your memory recall and climb the leaderboards with these proven strategies:</p>
+                <div className="guide-tips-grid">
+                  <div className="guide-tip-item">
+                    <strong>Grid Spatial Memory</strong>
+                    <span>Anchor cards by corner and edge positions rather than trying to memorize the whole grid at once.</span>
+                  </div>
+                  <div className="guide-tip-item">
+                    <strong>Avoid Blind Guessing</strong>
+                    <span>Every random click adds to your move count and degrades your final completion accuracy.</span>
+                  </div>
+                  <div className="guide-tip-item">
+                    <strong>Pace Your Opening</strong>
+                    <span>Use early moves deliberately to survey card locations before making aggressive matching runs.</span>
+                  </div>
+                  <div className="guide-tip-item">
+                    <strong>Theme Associations</strong>
+                    <span>Mentally categorize similar shapes or icons to quickly connect pairs when their match appears.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* QUICK ACTIONS */}
+            <div className="guide-bottom-actions">
+              <button className="btn primary" onClick={() => { setMode('solo'); nav('setup'); }}>
+                Play Solo <ChevronRight size={16} />
+              </button>
+              <button className="btn secondary" onClick={() => { setMode('local'); nav('setup'); }}>
+                <Users size={16} /> Play Together
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       {page === 'about_developer' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">ABOUT THE DEVELOPER</span><h1>Built by JB Devs</h1></div>
         <div className="about-sections" style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
           
@@ -1918,10 +2278,20 @@ export default function App() {
           <div className="section-block about-card">
             <h3 style={{ marginBottom: '12px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Brain size={18} style={{ color: 'var(--accent)' }}/> Why MindFlip?</h3>
             <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: '0 0 12px 0' }}>
-              MindFlip is a memory-card game project built to make improving memory and concentration enjoyable. It brings together interactive gameplay, multiple difficulty levels, card themes, solo challenges, and local multiplayer in one experience.
+              MindFlip is developed under the JB Devs brand as a focused memory-card game built to make cognitive training and concentration enjoyable. It brings together interactive gameplay, multiple difficulty levels, card themes, solo challenges, and local multiplayer in one clean experience.
             </p>
             <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
-              This project is part of my ongoing journey in building interactive web applications.
+              The game continues to receive ongoing gameplay, usability, and interface improvements under the JB Devs brand.
+            </p>
+          </div>
+
+          <div className="section-block about-card">
+            <h3 style={{ marginBottom: '12px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Sparkles size={18} style={{ color: 'var(--accent)' }}/> What's Coming Next?</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span className="local-badge" style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Globe2 size={13} /> Online Multiplayer — In Development</span>
+            </div>
+            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
+              An online multiplayer mode is being developed to let players connect and compete remotely across devices. Please note that this feature is currently in active development, is not yet available, and no official release date has been confirmed.
             </p>
           </div>
 
