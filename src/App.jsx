@@ -85,107 +85,212 @@ export const isReservedDeveloperName = (rawName) => {
   return false;
 };
 
-// Centralized restricted terms definition
-const REGIONAL_TERMS = [
-  'myree',
-  'myren',
-  'myr',
-  'myre',
-  'myran',
-  'myre pooran',
-  'andi',
-  'funda',
-  'funde',
-  'thantha',
-  'thalla',
-  'thantha ella',
-  'thayoli',
-  'fundachi',
-  'fundechi',
-  'pooran'
-];
+// Centralized restricted terms definition by language
+const RESTRICTED_TERMS_BY_LANGUAGE = {
+  malayalamNative: [
+    'മൈര്',
+    'മൈരേ',
+    'മൈരൻ',
+    'അണ്ടി',
+    'ഫണ്ട',
+    'ഫണ്ടേ',
+    'തന്ത',
+    'തള്ള',
+    'തന്തയില്ലാത്തവൻ',
+    'തന്തയില്ലാത്ത',
+    'തായോളി',
+    'പൂറൻ',
+    'പൂറ്',
+    'ഫണ്ടാച്ചി',
+    'ഫണ്ടേച്ചി',
+    'ഇല്ലാത്തവൻ',
+    'ഇല്ലാത്ത'
+  ],
+  malayalamManglish: [
+    'myree',
+    'myren',
+    'myr',
+    'myre',
+    'myran',
+    'myre pooran',
+    'andi',
+    'funda',
+    'funde',
+    'thantha',
+    'thalla',
+    'thantha ella',
+    'thayoli',
+    'fundachi',
+    'fundechi',
+    'pooran',
+    'pooru',
+    'ellathavan',
+    'ellatha'
+  ],
+  english: [
+    'fuck',
+    'fucker',
+    'fucking',
+    'shit',
+    'bitch',
+    'asshole',
+    'bastard',
+    'cunt',
+    'dick',
+    'pussy',
+    'slut',
+    'whore',
+    'faggot',
+    'nigger',
+    'nigga',
+    'retard',
+    'motherfucker',
+    'cock',
+    'twat',
+    'wanker',
+    'prick',
+    'blowjob',
+    'dumbass'
+  ],
+  hindiDevanagari: [
+    'मादरचोद',
+    'मादरचोध',
+    'बहनचोद',
+    'भेनचोद',
+    'भोसड़ीके',
+    'भोसड़ी',
+    'भोसडीके',
+    'भोसडी',
+    'चूतिया',
+    'चुतिया',
+    'चूत',
+    'गांडू',
+    'गांड',
+    'लौड़ा',
+    'लौडे',
+    'लौडा',
+    'लण्ड',
+    'लंड',
+    'रंडी',
+    'हरामी',
+    'कुतिया',
+    'कमीना',
+    'कमीने'
+  ],
+  hindiHinglish: [
+    'madarchod',
+    'madarchodh',
+    'madar chod',
+    'bhenchod',
+    'behenchod',
+    'benchod',
+    'bhen chod',
+    'bhosdike',
+    'bhosadike',
+    'bhosdi',
+    'bhosadi',
+    'chutiya',
+    'chutiye',
+    'chutiyapa',
+    'chootiya',
+    'choot',
+    'chut',
+    'gaandu',
+    'gandu',
+    'gaand',
+    'gand',
+    'lauda',
+    'lawda',
+    'lavda',
+    'loda',
+    'lund',
+    'raand',
+    'randi',
+    'harami',
+    'kutiya',
+    'kameena',
+    'kaminey',
+    'kamine'
+  ],
+  tamilNative: [
+    'ஓத்தா',
+    'ஒத்தா',
+    'தேவடியா',
+    'தேவிடியா',
+    'புண்டை',
+    'சுன்னி'
+  ],
+  tamilTanglish: [
+    'othaa',
+    'otha',
+    'thevadiya',
+    'thevidya',
+    'pundai',
+    'poolu',
+    'sunni'
+  ]
+};
 
-const ENGLISH_PROFANITY = [
-  'fuck',
-  'fucker',
-  'fucking',
-  'shit',
-  'bitch',
-  'asshole',
-  'bastard',
-  'cunt',
-  'dick',
-  'pussy',
-  'slut',
-  'whore',
-  'faggot',
-  'nigger',
-  'nigga',
-  'retard',
-  'motherfucker',
-  'cock',
-  'twat',
-  'wanker',
-  'prick',
-  'blowjob',
-  'dumbass'
-];
+const SEP = '[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]*';
+// Indic Unicode ranges:
+// Devanagari: \u0900-\u097F (Hindi, Marathi)
+// Bengali: \u0980-\u09FF (Bengali)
+// Gurmukhi: \u0A00-\u0A7F (Punjabi)
+// Gujarati: \u0A80-\u0AFF (Gujarati)
+// Tamil: \u0B80-\u0BFF (Tamil)
+// Telugu: \u0C00-\u0C7F (Telugu)
+// Kannada: \u0C80-\u0CFF (Kannada)
+// Malayalam: \u0D00-\u0D7F (Malayalam)
+// Arabic/Urdu: \u0600-\u06FF (Urdu)
+const INDIC_RANGES = '\\u0900-\\u097F\\u0980-\\u09FF\\u0A00-\\u0A7F\\u0A80-\\u0AFF\\u0B80-\\u0BFF\\u0C00-\\u0C7F\\u0C80-\\u0CFF\\u0D00-\\u0D7F\\u0600-\\u06FF';
+const BOUNDARY_PRE = `(?:^|[^a-z${INDIC_RANGES}])`;
+const BOUNDARY_POST = `(?:[^a-z${INDIC_RANGES}]|$)`;
 
 const buildPattern = (term) => {
-  const SEP = '[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]*';
   const parts = term.trim().split(/\s+/).map((word) => {
-    return word.split('').map((ch) => `${ch}+`).join(SEP);
+    return Array.from(word).map((ch) => `${ch}+`).join(SEP);
   });
   return parts.join('[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]+');
 };
 
+const COMPILED_PATTERNS = Object.entries(RESTRICTED_TERMS_BY_LANGUAGE).reduce((acc, [lang, terms]) => {
+  acc[lang] = terms.map((term) => {
+    const inner = buildPattern(term);
+    return new RegExp(`${BOUNDARY_PRE}${inner}${BOUNDARY_POST}`, 'i');
+  });
+  return acc;
+}, {});
+
 const SEP_CHAR = '[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]*';
-const BOUNDARY_PRE = '(?:^|[^a-z])';
-const BOUNDARY_POST = '(?:[^a-z]|$)';
-
-const REGIONAL_PATTERNS = REGIONAL_TERMS.map((term) => {
-  const inner = buildPattern(term);
-  return new RegExp(`${BOUNDARY_PRE}${inner}${BOUNDARY_POST}`, 'i');
-});
-
-const ENGLISH_PATTERNS = ENGLISH_PROFANITY.map((term) => {
-  const inner = buildPattern(term);
-  return new RegExp(`${BOUNDARY_PRE}${inner}${BOUNDARY_POST}`, 'i');
-});
-
 const JITHU_COMBO_REGEX = new RegExp(
-  `j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+${SEP_CHAR}(?:myr|andi|fund|thanth|thall|thayol|pooran|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)|(?:myr|andi|fund|thanth|thall|thayol|pooran|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)${SEP_CHAR}j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+`,
+  `j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+${SEP_CHAR}(?:myr|andi|fund|thanth|thall|thayol|pooran|pooru|ellath|bhenchod|madarchod|chutiya|bhosd|gaand|gand|lauda|lavda|lund|randi|harami|pundai|thevadiya|othaa|otha|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)|(?:myr|andi|fund|thanth|thall|thayol|pooran|pooru|ellath|bhenchod|madarchod|chutiya|bhosd|gaand|gand|lauda|lavda|lund|randi|harami|pundai|thevadiya|othaa|otha|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)${SEP_CHAR}j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+`,
   'i'
 );
 
-const MULTI_BLOCKED_COMBO_REGEX = /(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)/i;
+const MULTI_BLOCKED_COMBO_REGEX = /(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|pooru|ellath[a-z]*|bhenchod|madarchod|chutiya|bhosd[a-z]*|gaand[a-z]*|gand[a-z]*|lauda|lavda|lund|randi|harami|pundai|thevadiya|othaa|otha|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|pooru|ellath[a-z]*|bhenchod|madarchod|chutiya|bhosd[a-z]*|gaand[a-z]*|gand[a-z]*|lauda|lavda|lund|randi|harami|pundai|thevadiya|othaa|otha|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)/i;
 
 export const hasBlockedTerms = (rawName) => {
   if (!rawName) return false;
-  const lower = rawName.toLowerCase();
+  // Unicode normalize NFKC to handle character decompositions and full-width forms
+  const lower = rawName.normalize('NFKC').toLowerCase();
 
   // Combinations of Jithu with restricted terms
   if (JITHU_COMBO_REGEX.test(lower)) {
     return true;
   }
 
-  // Combinations across restricted roots (e.g. andimyren, fundamyre, thayolimyr)
-  const compressed = lower.replace(/[^a-z0-9]+/g, '');
+  // Combinations across restricted roots (e.g. andimyren, fundamyre, thayolimyr, bhenchodmyre)
+  const compressed = lower.replace(new RegExp(`[^a-z0-9${INDIC_RANGES}]+`, 'g'), '');
   if (MULTI_BLOCKED_COMBO_REGEX.test(compressed)) {
     return true;
   }
 
-  // Regional restricted terms with letter boundaries and separator/repeat evasions
-  for (const regex of REGIONAL_PATTERNS) {
-    if (regex.test(lower)) {
-      return true;
-    }
-  }
-
-  // English profanities and slurs with letter boundaries and separator/repeat evasions
-  for (const regex of ENGLISH_PATTERNS) {
-    if (regex.test(lower)) {
-      return true;
+  // Check language categories
+  for (const langList of Object.values(COMPILED_PATTERNS)) {
+    for (const regex of langList) {
+      if (regex.test(lower)) {
+        return true;
+      }
     }
   }
 
