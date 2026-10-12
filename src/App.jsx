@@ -49,6 +49,30 @@ const THEMES = {
 };
 const STORE = 'mindflip-v1';
 const createGameId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const PROFILE_HISTORY_OWNER_MIGRATION = 1;
+const migrateProfileHistory = (data) => {
+  if (data.profileHistoryOwnerMigration >= PROFILE_HISTORY_OWNER_MIGRATION) return data;
+
+  const profileNames = typeof data.displayName === 'string' && data.displayName.trim()
+    ? new Set([data.displayName, data.lastSoloName]
+      .filter((name) => typeof name === 'string' && name.trim())
+      .map((name) => name.trim().toLowerCase()))
+    : new Set();
+  const history = Array.isArray(data.history) && profileNames.size
+    ? data.history.map((record) => {
+      if (!record || record.mode !== 'solo' || record.profileOwnerId !== undefined) return record;
+      return typeof record.name === 'string' && profileNames.has(record.name.trim().toLowerCase())
+        ? { ...record, profileOwnerId: data.profileId }
+        : record;
+    })
+    : data.history;
+
+  return {
+    ...data,
+    history,
+    profileHistoryOwnerMigration: PROFILE_HISTORY_OWNER_MIGRATION
+  };
+};
 const readStore = () => {
   try {
     const raw = localStorage.getItem(STORE);
@@ -63,6 +87,7 @@ const readStore = () => {
     if (!data.profileId) {
       data.profileId = createGameId();
     }
+    Object.assign(data, migrateProfileHistory(data));
     const hasProfile = Boolean(data.displayName && typeof data.displayName === 'string' && data.displayName.trim());
     data.hasProfile = hasProfile;
     return data;
@@ -440,8 +465,11 @@ export const calculatePlayerStats = (historyList, currentProfileName, persistedD
   const targetName = (typeof currentProfileName === 'string' && currentProfileName.trim() && currentProfileName !== persistedData?.profileId)
     ? currentProfileName.trim()
     : (persistedData?.displayName || '').trim();
+  const ownerId = persistedData?.profileId;
 
-  const isTargetRecord = (r) => isProfileMatchRecord(r, targetName);
+  const isTargetRecord = (r) => ownerId
+    ? r?.profileOwnerId === ownerId
+    : r?.mode === 'solo' && isProfileMatchRecord(r, targetName);
 
   const seenProfileMatches = new Set();
   let totalGamesPlayed = 0;
@@ -556,8 +584,7 @@ export const calculatePlayerStats = (historyList, currentProfileName, persistedD
       })[0]
     : null;
 
-  const legacyMultiWins = targetName ? (persistedData.multiplayerWins?.[targetName] || 0) : 0;
-  const playerMultiWins = Math.max(historyMultiWins, legacyMultiWins);
+  const playerMultiWins = historyMultiWins;
 
   return {
     gamesPlayed: totalGamesPlayed,
@@ -629,6 +656,7 @@ export default function App() {
   const currentProfileId = persisted.profileId || 'profile-default';
 
   const frozenSoloPlayerName = useRef(soloPlayerName);
+  const frozenSoloProfileOwnerId = useRef(null);
   const frozenMatchSlots = useRef([]);
 
   const homeStats = useMemo(() => {
@@ -645,7 +673,7 @@ export default function App() {
     const { tab } = getLeaderboardParams();
     if (tab === 'solo') return 'solo';
     if (tab === 'multiplayer') return 'multiplayer';
-    return 'solo';
+    return 'overall';
   });
   const [multiplayerView, setMultiplayerView] = useState('top_players');
   const [expandedPlayer, setExpandedPlayer] = useState(null);
@@ -774,7 +802,7 @@ export default function App() {
           setLeaderboardMode('multiplayer');
           setMultiplayerView('top_players');
         } else {
-          setLeaderboardMode('solo');
+          setLeaderboardMode('overall');
           setLeaderboardFilter('Easy');
         }
       }
@@ -794,6 +822,9 @@ export default function App() {
         return;
       }
       frozenSoloPlayerName.current = effectiveSoloName;
+      frozenSoloProfileOwnerId.current = effectiveSoloName.trim().toLowerCase() === profileName.trim().toLowerCase()
+        ? currentProfileId
+        : null;
     }
     if (chosenMode === 'local') {
       const activeNames = [];
@@ -915,7 +946,8 @@ export default function App() {
           seconds,
           completedPairs,
           date: new Date().toISOString(),
-          name: inGameSoloName
+          name: inGameSoloName,
+          profileOwnerId: frozenSoloProfileOwnerId.current
         });
       }
     }
@@ -994,7 +1026,7 @@ export default function App() {
   };
   const resetGame = () => { startGame(mode); };
   const copyRoom = async () => { try { await navigator.clipboard.writeText(roomCode); toast('Room code copied.'); } catch { toast(`Share this code: ${roomCode}`); } };
-  const { bests, multiBests, multiTopPlayers, multiMatches, historyList, allPlayers, multiWins } = useMemo(() => {
+  const { bests, multiBests, multiTopPlayers, multiMatches, overallTopPlayers, overallStats, historyList, allPlayers, multiWins } = useMemo(() => {
     const seenIds = new Set();
     const cleanHistory = [...(persisted.history || [])].filter(r => {
       if (!r.id) return true;
@@ -1198,6 +1230,71 @@ export default function App() {
     const multiMatches = Array.from(multiMatchesMap.values());
     multiMatches.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
+    const overallPlayerMap = new window.Map();
+    const overallMatchKeys = new Set();
+    const overallSeenPlayerMatches = new Set();
+    const overallSeenWins = new Set();
+    let overallTotalScore = 0;
+    let overallTotalPairs = 0;
+
+    const getOverallMatchKey = (r, index) => {
+      if (isMultiMode(r)) {
+        return `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || `legacy-${r.date || index}`}`;
+      }
+      return `solo-${r.sessionId || r.id || `${r.date || index}-${(r.name || 'Player').trim().toLowerCase()}`}`;
+    };
+
+    cleanHistory.forEach((r, index) => {
+      if (!r || (!isMultiMode(r) && r.mode !== 'solo')) return;
+
+      const matchKey = getOverallMatchKey(r, index);
+      overallMatchKeys.add(matchKey);
+      const playerName = (r.name || 'Player').trim() || 'Player';
+      const playerKey = playerName.toLowerCase();
+      const difficulty = r.difficulty || 'Unknown';
+      const groupKey = JSON.stringify([playerKey, difficulty]);
+      const playerMatchKey = isMultiMode(r)
+        ? JSON.stringify([matchKey, playerKey, difficulty])
+        : JSON.stringify([matchKey]);
+      if (overallSeenPlayerMatches.has(playerMatchKey)) return;
+      overallSeenPlayerMatches.add(playerMatchKey);
+
+      const score = Number(r.score);
+      if (Number.isFinite(score)) overallTotalScore += score;
+      if (typeof r.completedPairs === 'number' && Number.isFinite(r.completedPairs)) {
+        overallTotalPairs += r.completedPairs;
+      }
+
+      let player = overallPlayerMap.get(groupKey);
+      if (!player) {
+        player = {
+          name: playerName,
+          difficulty,
+          totalScore: 0,
+          gamesPlayed: 0,
+          wins: 0
+        };
+        overallPlayerMap.set(groupKey, player);
+      }
+      if (Number.isFinite(score)) player.totalScore += score;
+      player.gamesPlayed += 1;
+
+      if (isMultiMode(r) && r.matchResult === 'winner') {
+        player.wins += 1;
+        overallSeenWins.add(JSON.stringify([matchKey, playerKey]));
+      }
+    });
+
+    const difficultyOrder = Object.keys(DIFFICULTIES);
+    const overallTopPlayers = Array.from(overallPlayerMap.values()).sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      if (b.gamesPlayed !== a.gamesPlayed) return b.gamesPlayed - a.gamesPlayed;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      const nameOrder = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      if (nameOrder !== 0) return nameOrder;
+      return difficultyOrder.indexOf(a.difficulty) - difficultyOrder.indexOf(b.difficulty);
+    });
+
     let hList = [...cleanHistory];
     const pSet = new Set(cleanHistory.map((r) => (r.name || 'Player').trim()));
 
@@ -1212,7 +1309,22 @@ export default function App() {
     if (historySort === 'score') hList.sort((a, b) => b.score - a.score);
     else if (historySort === 'time') hList.sort((a, b) => (a.seconds || Infinity) - (b.seconds || Infinity));
 
-    return { bests: bestsArray.slice(0, 50), multiBests: multiBestsArray.slice(0, 50), multiTopPlayers: multiTopPlayers.slice(0, 50), multiMatches, historyList: hList, allPlayers: Array.from(pSet), multiWins };
+    return {
+      bests: bestsArray.slice(0, 50),
+      multiBests: multiBestsArray.slice(0, 50),
+      multiTopPlayers: multiTopPlayers.slice(0, 50),
+      multiMatches,
+      overallTopPlayers: overallTopPlayers.map((player, index) => ({ ...player, displayRank: index + 1 })),
+      overallStats: {
+        totalScore: overallTotalScore,
+        gamesPlayed: overallMatchKeys.size,
+        pairsMatched: overallTotalPairs,
+        multiplayerWins: overallSeenWins.size
+      },
+      historyList: hList,
+      allPlayers: Array.from(pSet),
+      multiWins
+    };
   }, [persisted.history, persisted.multiplayerWins, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const renderRankBadge = (rank) => {
@@ -1240,7 +1352,7 @@ export default function App() {
         setLeaderboardMode('multiplayer');
         setMultiplayerView('top_players');
       } else {
-        setLeaderboardMode('solo');
+        setLeaderboardMode('overall');
         setLeaderboardFilter('Easy');
         setMultiplayerView('top_players');
       }
@@ -1439,30 +1551,6 @@ export default function App() {
           </div>
         </section>
 
-        <section className="home-progress" aria-label="Your Progress">
-          <div className="home-progress-card">
-            <div className="home-progress-header">
-              <span className="eyebrow">YOUR PROGRESS</span>
-              <h3>Performance Highlights</h3>
-            </div>
-            <div className="home-progress-grid">
-              <div className="home-progress-item">
-                <small>Best Solo Score</small>
-                <strong>{homeStats.bestSoloScore === null ? '—' : homeStats.bestSoloScore.toLocaleString()}</strong>
-              </div>
-              <div className="home-progress-item">
-                <small>Most-Played Difficulty</small>
-                <strong>{homeStats.mostPlayedDifficulty || '—'}</strong>
-              </div>
-            </div>
-            <p className="home-progress-summary">
-              {homeStats.gamesPlayed > 0
-                ? `You have completed ${homeStats.gamesPlayed} ${homeStats.gamesPlayed === 1 ? 'match' : 'matches'} and matched ${homeStats.pairsMatched.toLocaleString()} ${homeStats.pairsMatched === 1 ? 'pair' : 'pairs'}.`
-                : 'Complete a match to start building your saved progress.'}
-            </p>
-          </div>
-        </section>
-
         <div className="hero-art home-illustration" aria-label="Decorative memory cards">
           <div className="floating-card card-one"><span>◆</span></div>
           <div className="floating-card card-two"><span>●</span></div>
@@ -1505,7 +1593,53 @@ export default function App() {
         {gameStatus === 'playing' && <div className="game-tools">{mode === 'solo' && <button className="btn secondary small-btn" onClick={useHint} disabled={hintUsed}><Sparkles size={15} /> {hintUsed ? 'Hint used' : 'Use a hint'}</button>}<span>Matched cards stay visible. Take your time.</span><button className="icon-btn sound-toggle" title={sound ? 'Mute sound' : 'Enable sound'} aria-label={sound ? 'Mute sound' : 'Enable sound'} onClick={() => setSound((v) => !v)}>{sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}</button></div>}
       </section>}
 
-      {page === 'leaderboard' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div><div className="leaderboard-card"><div className="leaderboard-head"><div><div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}><button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')} style={{ padding: '6px 12px', fontSize: '11px' }}>Solo</button><button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')} style={{ padding: '6px 12px', fontSize: '11px' }}>Multiplayer</button></div><p>{leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : multiplayerView === 'top_players' ? 'Player rankings across all multiplayer games · Local device' : 'Full match history and participant breakdowns · Local device'}</p></div><span className="local-badge"><BarChart3 size={14} /> Local results</span></div>{leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}{leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
+      {page === 'leaderboard' && <section className="content-page">
+        <button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button>
+        <div className="page-title"><span className="eyebrow">A LITTLE FRIENDLY COMPETITION</span><h1>Leaderboard</h1><p>Your best local results, collected on this device.</p></div>
+        <div className="leaderboard-card">
+          <div className="leaderboard-head">
+            <div>
+              <div className="leaderboard-mode-tabs">
+                <button className={`count-btn ${leaderboardMode === 'overall' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('overall')}>Overall</button>
+                <button className={`count-btn ${leaderboardMode === 'solo' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('solo')}>Solo</button>
+                <button className={`count-btn ${leaderboardMode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setLeaderboardMode('multiplayer')}>Multiplayer</button>
+              </div>
+              <p>{leaderboardMode === 'overall' ? 'Combined solo and multiplayer results · Local device' : leaderboardMode === 'solo' ? 'Top solo score per player · Filter by difficulty' : multiplayerView === 'top_players' ? 'Player rankings across all multiplayer games · Local device' : 'Full match history and participant breakdowns · Local device'}</p>
+            </div>
+            <span className="local-badge"><BarChart3 size={14} /> Local results</span>
+          </div>
+          {leaderboardMode === 'solo' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}>{['Easy', 'Normal', 'Medium', 'Hard', 'Extreme'].map((f) => (<button key={f} className={`count-btn ${leaderboardFilter === f ? 'selected' : ''}`} onClick={() => setLeaderboardFilter(f)} style={{ padding: '6px 12px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}>{f}</button>))}</div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>Showing {leaderboardFilter} difficulty</span></div>}
+          {leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
+          {leaderboardMode === 'overall' && (
+            <>
+              <div className="overall-stats">
+                <div className="overall-stat"><small>Total Score</small><strong>{overallStats.totalScore.toLocaleString()}</strong></div>
+                <div className="overall-stat"><small>Games Played</small><strong>{overallStats.gamesPlayed.toLocaleString()}</strong></div>
+                <div className="overall-stat"><small>Total Pairs Matched</small><strong>{overallStats.pairsMatched.toLocaleString()}</strong></div>
+                <div className="overall-stat"><small>Multiplayer Wins</small><strong>{overallStats.multiplayerWins.toLocaleString()}</strong></div>
+              </div>
+              <div className="overall-section-heading"><Trophy size={16} /><h2>Top Players</h2><span>{overallTopPlayers.length} ranked entries</span></div>
+              {overallTopPlayers.length ? (
+                <div className="leaderboard-list overall-leaderboard-list">
+                  <div className="leader-row overall-top-row table-header">
+                    <span>Rank</span><span>Player</span><span>Difficulty</span><span>Total Score</span><span>Games</span><span>MP Wins</span>
+                  </div>
+                  {overallTopPlayers.map((row) => (
+                    <div className="leader-row overall-top-row" key={`${row.name.toLowerCase()}-${row.difficulty}`}>
+                      <span className="rank-cell">{renderRankBadge(row.displayRank)}</span>
+                      <span className="leader-player-clean" title={row.name}><span className="player-display-name">{row.name}</span></span>
+                      <span><span className="difficulty-pill">{row.difficulty}</span></span>
+                      <strong>{row.totalScore.toLocaleString()}</strong>
+                      <span className="overall-number">{row.gamesPlayed}</span>
+                      <span className={`overall-number ${row.wins ? 'overall-win-count' : ''}`}>{row.wins}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state overall-empty-state"><span className="empty-icon"><Trophy size={24} /></span><h3>No match records yet</h3><p>Play a solo or multiplayer game to appear on the overall leaderboard.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>
+              )}
+            </>
+          )}
       {leaderboardMode === 'solo' && (
         bests.length ? (
           <div className="leaderboard-list">
@@ -2307,9 +2441,13 @@ export default function App() {
           </div>
         </section>
       )}
-      {page === 'about_developer' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">ABOUT THE DEVELOPER</span><h1>Built by JB Devs</h1></div>
-        <div className="about-sections" style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
-          
+      {page === 'about_developer' && <section className="content-page about-page">
+        <button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button>
+        <div className="page-title">
+          <span className="eyebrow">ABOUT THE DEVELOPER</span>
+          <h1>Built by JB Devs</h1>
+        </div>
+        <div className="about-sections">
           <div className="section-block about-card profile-intro-card">
             <div className="profile-header">
               <div className="profile-photo-container">
@@ -2318,43 +2456,40 @@ export default function App() {
                   <User size={32} />
                 </div>
               </div>
-              <div className="profile-content">
-                <h2 style={{ margin: 0, fontSize: '22px', letterSpacing: '-0.5px' }}>Hi, I'm Jithu Biju</h2>
-                <span className="local-badge" style={{ marginTop: '6px', display: 'inline-block', marginBottom: '16px' }}>BCA Graduate (2026)</span>
-                <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
-                  Hi, I'm a BCA graduate with a strong interest in web development and building practical digital experiences. I enjoy turning ideas into functional, user-friendly websites and applications while continuously improving my development skills.
-                </p>
+              <div className="profile-content about-intro-copy">
+                <h2>I'm Jithu Biju — a Full-Stack Developer</h2>
+                <span className="local-badge about-qualification">BCA Graduate (2026)</span>
+                <p>A BCA graduate passionate about web development and building practical digital experiences. I enjoy turning ideas into functional, user-friendly websites and applications while continuously improving my development skills.</p>
               </div>
             </div>
           </div>
 
           <div className="section-block about-card">
-            <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Code2 size={18} style={{ color: 'var(--accent)' }}/> What I Do</h3>
-            <ul style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: '1.6', paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li>Building responsive and user-friendly web interfaces.</li>
-              <li>Developing interactive applications using JavaScript and React.</li>
-              <li>Learning and building full-stack applications using the MERN stack.</li>
-              <li>Working with backend technologies, APIs, and databases.</li>
-              <li>Improving usability, functionality, and overall user experience.</li>
+            <h3 className="about-card-title"><Code2 size={18} /> What I Do</h3>
+            <ul className="about-what-list">
+              <li>Build responsive, user-friendly web interfaces.</li>
+              <li>Develop interactive applications using JavaScript and React.</li>
+              <li>Work on full-stack applications using the MERN stack.</li>
+              <li>Build backend functionality and work with APIs and databases.</li>
             </ul>
           </div>
 
           <div className="section-block about-card">
-            <h3 style={{ marginBottom: '20px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={18} style={{ color: 'var(--accent)' }}/> Technologies I Work With</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-              <div>
-                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Frontend</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  <span className="tech-badge mern-badge">React</span>
-                  <span className="tech-badge">JavaScript</span>
+            <h3 className="about-card-title"><Cpu size={18} /> Technologies I Work With</h3>
+            <div className="about-tech-grid">
+              <div className="about-tech-group">
+                <h4>Frontend</h4>
+                <div className="about-tech-badges">
                   <span className="tech-badge">HTML</span>
                   <span className="tech-badge">CSS</span>
+                  <span className="tech-badge mern-badge">JavaScript</span>
+                  <span className="tech-badge mern-badge">React</span>
+                  <span className="tech-badge">Vite</span>
                 </div>
               </div>
-              
-              <div>
-                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Backend</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="about-tech-group">
+                <h4>Backend</h4>
+                <div className="about-tech-badges">
                   <span className="tech-badge mern-badge">Node.js</span>
                   <span className="tech-badge mern-badge">Express.js</span>
                   <span className="tech-badge">Python</span>
@@ -2362,19 +2497,17 @@ export default function App() {
                   <span className="tech-badge">PHP</span>
                 </div>
               </div>
-
-              <div>
-                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Databases</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="about-tech-group">
+                <h4>Database</h4>
+                <div className="about-tech-badges">
                   <span className="tech-badge mern-badge">MongoDB</span>
                   <span className="tech-badge">MySQL</span>
                   <span className="tech-badge">SQLite</span>
                 </div>
               </div>
-
-              <div>
-                <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>Tools</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="about-tech-group">
+                <h4>Tools</h4>
+                <div className="about-tech-badges">
                   <span className="tech-badge">Git</span>
                   <span className="tech-badge">GitHub</span>
                   <span className="tech-badge">VS Code</span>
@@ -2383,34 +2516,26 @@ export default function App() {
             </div>
           </div>
 
-
-
           <div className="section-block about-card">
-            <h3 style={{ marginBottom: '12px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Brain size={18} style={{ color: 'var(--accent)' }}/> Why MindFlip?</h3>
-            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: '0 0 12px 0' }}>
-              MindFlip is developed under the JB Devs brand as a focused memory-card game built to make cognitive training and concentration enjoyable. It brings together interactive gameplay, multiple difficulty levels, card themes, solo challenges, and local multiplayer in one clean experience.
-            </p>
-            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
-              The game continues to receive ongoing gameplay, usability, and interface improvements under the JB Devs brand.
-            </p>
+            <h3 className="about-card-title"><Brain size={18} /> Why MindFlip?</h3>
+            <p className="about-card-copy">MindFlip is a memory-matching game built to explore interactive web development, game logic, responsive UI design, and browser-based data storage. Building it has helped me practise React, state management, and creating a more complete user experience.</p>
           </div>
 
           <div className="section-block about-card">
-            <h3 style={{ marginBottom: '12px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Sparkles size={18} style={{ color: 'var(--accent)' }}/> What's Coming Next?</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="local-badge" style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Globe2 size={13} /> Online Multiplayer — In Development</span>
+            <h3 className="about-card-title"><Sparkles size={18} /> What's Coming Next?</h3>
+            <div className="about-coming-badge">
+              <span className="local-badge"><Globe2 size={13} /> Online Multiplayer — In Development</span>
             </div>
-            <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
-              An online multiplayer mode is being developed to let players connect and compete remotely across devices. Please note that this feature is currently in active development, is not yet available, and no official release date has been confirmed.
-            </p>
+            <p className="about-card-copy">An online multiplayer mode is being developed to let players connect and compete remotely across devices. Please note that this feature is currently in active development, is not yet available, and no official release date has been confirmed.</p>
           </div>
 
           <div className="section-block about-card">
-            <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Link2 size={18} style={{ color: 'var(--accent)' }}/> Connect With Me</h3>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <a href="https://jithu-portfolio-alpha.vercel.app/" target="_blank" rel="noreferrer" className="btn secondary"><Briefcase size={16} /> Portfolio</a>
-              <a href="https://www.linkedin.com/in/jithu-biju-/" target="_blank" rel="noreferrer" className="btn secondary"><Linkedin size={16} /> LinkedIn</a>
-              <a href="https://www.instagram.com/j.i.t.h.u_/" target="_blank" rel="noreferrer" className="btn secondary"><Instagram size={16} /> Instagram</a>
+            <h3 className="about-card-title"><Link2 size={18} /> Let's Connect</h3>
+            <p className="about-connect-copy">Interested in my work or want to connect? Find me here.</p>
+            <div className="about-connect-links">
+              <a href="https://jithu-portfolio-alpha.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn secondary" aria-label="Visit Jithu Biju's portfolio (opens in a new tab)"><Briefcase size={16} /> Portfolio</a>
+              <a href="https://www.linkedin.com/in/jithu-biju-/" target="_blank" rel="noopener noreferrer" className="btn secondary" aria-label="Visit Jithu Biju on LinkedIn (opens in a new tab)"><Linkedin size={16} /> LinkedIn</a>
+              <a href="https://www.instagram.com/j.i.t.h.u_/" target="_blank" rel="noopener noreferrer" className="btn secondary" aria-label="Visit Jithu Biju on Instagram (opens in a new tab)"><Instagram size={16} /> Instagram</a>
             </div>
           </div>
         </div>
@@ -2447,7 +2572,7 @@ export default function App() {
       </div>
       <div className="footer-bottom">
         <span style={{ fontSize: '12px', color: 'var(--muted)' }}>© {new Date().getFullYear()} JB Devs. All rights reserved.</span>
-        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.1.0</span>
+        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.2.0</span>
       </div>
     </footer>}
     {notice && <div className="toast" role="status"><Check size={16} />{notice}</div>}
