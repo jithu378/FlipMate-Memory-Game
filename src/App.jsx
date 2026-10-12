@@ -48,7 +48,20 @@ const THEMES = {
   Animals: [Cat, Dog, PawPrint, Bird, Fish, Rabbit, Snail, Turtle, Rat, Worm, Squirrel, Bug, Shell, LionIcon, PandaIcon, ElephantIcon, FoxIcon, BearIcon, FrogIcon, OwlIcon, WhaleIcon, ButterflyIcon, BeeIcon, PenguinIcon]
 };
 const STORE = 'mindflip-v1';
-const readStore = () => { try { return JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { return {}; } };
+const createGameId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const readStore = () => {
+  try {
+    const raw = localStorage.getItem(STORE);
+    const data = raw ? JSON.parse(raw) : {};
+    if (!data.profileId) {
+      data.profileId = createGameId();
+      try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* private browsing may block storage */ }
+    }
+    return data;
+  } catch {
+    return { profileId: 'profile-default' };
+  }
+};
 const saveStore = (data) => { try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* private browsing may block storage */ } };
 const shuffle = (items) => { const a = [...items]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; };
 const makeDeck = (pairs, theme) => {
@@ -62,7 +75,141 @@ const makeDeck = (pairs, theme) => {
   ]));
 };
 const formatTime = (s) => `${Math.floor(Math.max(0, s) / 60).toString().padStart(2, '0')}:${(Math.max(0, s) % 60).toString().padStart(2, '0')}`;
-const createGameId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+export const isReservedDeveloperName = (rawName) => {
+  if (!rawName) return false;
+  const clean = rawName.toLowerCase().replace(/[\s\-_.,/\\|~`!@#$%^&*()[\]{}]+/g, '');
+  if (/^jb(dev|devs|developer|developers|devloper|devlopers|developr)$/.test(clean)) {
+    return true;
+  }
+  return false;
+};
+
+// Centralized restricted terms definition
+const REGIONAL_TERMS = [
+  'myree',
+  'myren',
+  'myr',
+  'myre',
+  'myran',
+  'myre pooran',
+  'andi',
+  'funda',
+  'funde',
+  'thantha',
+  'thalla',
+  'thantha ella',
+  'thayoli',
+  'fundachi',
+  'fundechi',
+  'pooran'
+];
+
+const ENGLISH_PROFANITY = [
+  'fuck',
+  'fucker',
+  'fucking',
+  'shit',
+  'bitch',
+  'asshole',
+  'bastard',
+  'cunt',
+  'dick',
+  'pussy',
+  'slut',
+  'whore',
+  'faggot',
+  'nigger',
+  'nigga',
+  'retard',
+  'motherfucker',
+  'cock',
+  'twat',
+  'wanker',
+  'prick',
+  'blowjob',
+  'dumbass'
+];
+
+const buildPattern = (term) => {
+  const SEP = '[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]*';
+  const parts = term.trim().split(/\s+/).map((word) => {
+    return word.split('').map((ch) => `${ch}+`).join(SEP);
+  });
+  return parts.join('[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]+');
+};
+
+const SEP_CHAR = '[\\s\\-_.,*~#!@$%^&()[\\]{}|/\\\\]*';
+const BOUNDARY_PRE = '(?:^|[^a-z])';
+const BOUNDARY_POST = '(?:[^a-z]|$)';
+
+const REGIONAL_PATTERNS = REGIONAL_TERMS.map((term) => {
+  const inner = buildPattern(term);
+  return new RegExp(`${BOUNDARY_PRE}${inner}${BOUNDARY_POST}`, 'i');
+});
+
+const ENGLISH_PATTERNS = ENGLISH_PROFANITY.map((term) => {
+  const inner = buildPattern(term);
+  return new RegExp(`${BOUNDARY_PRE}${inner}${BOUNDARY_POST}`, 'i');
+});
+
+const JITHU_COMBO_REGEX = new RegExp(
+  `j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+${SEP_CHAR}(?:myr|andi|fund|thanth|thall|thayol|pooran|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)|(?:myr|andi|fund|thanth|thall|thayol|pooran|fuck|shit|bitch|cunt|dick|puss|slut|asshole|bastard)${SEP_CHAR}j+${SEP_CHAR}i+${SEP_CHAR}t+${SEP_CHAR}h+${SEP_CHAR}u+`,
+  'i'
+);
+
+const MULTI_BLOCKED_COMBO_REGEX = /(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)(?:andi|myr[a-z]*|fund[a-z]*|thall[a-z]*|thanth[a-z]*|thayol[a-z]*|pooran|fuck[a-z]*|shit[a-z]*|bitch[a-z]*|cunt|dick)/i;
+
+export const hasBlockedTerms = (rawName) => {
+  if (!rawName) return false;
+  const lower = rawName.toLowerCase();
+
+  // Combinations of Jithu with restricted terms
+  if (JITHU_COMBO_REGEX.test(lower)) {
+    return true;
+  }
+
+  // Combinations across restricted roots (e.g. andimyren, fundamyre, thayolimyr)
+  const compressed = lower.replace(/[^a-z0-9]+/g, '');
+  if (MULTI_BLOCKED_COMBO_REGEX.test(compressed)) {
+    return true;
+  }
+
+  // Regional restricted terms with letter boundaries and separator/repeat evasions
+  for (const regex of REGIONAL_PATTERNS) {
+    if (regex.test(lower)) {
+      return true;
+    }
+  }
+
+  // English profanities and slurs with letter boundaries and separator/repeat evasions
+  for (const regex of ENGLISH_PATTERNS) {
+    if (regex.test(lower)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export const validatePlayerName = (rawName, { allowEmpty = false } = {}) => {
+  const name = (rawName ?? '').trim();
+  if (!name) {
+    if (allowEmpty) return { valid: true };
+    return { valid: false, error: 'Please enter a name.' };
+  }
+  if (name.length > 20) {
+    return { valid: false, error: 'Name must be 20 characters or fewer.' };
+  }
+  if (isReservedDeveloperName(name)) {
+    return { valid: false, error: 'This name is reserved for the developer. Please choose a different name.' };
+  }
+  if (hasBlockedTerms(name)) {
+    return { valid: false, error: 'This name contains disallowed language. Please choose a different name.' };
+  }
+  return { valid: true };
+};
+
 const getLeaderboardParams = () => {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -172,9 +319,12 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomCreated, setRoomCreated] = useState(false);
-  const [customName, setCustomName] = useState(persisted.displayName || 'Player');
+  const [profileName, setProfileName] = useState(() => persisted.displayName || 'Player');
+  const [soloPlayerName, setSoloPlayerName] = useState(() => persisted.lastSoloName || persisted.displayName || 'Player');
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editNameInput, setEditNameInput] = useState(persisted.displayName || 'Player');
+  const [editNameInput, setEditNameInput] = useState(() => persisted.displayName || 'Player');
+  const [profileNameError, setProfileNameError] = useState('');
+  const currentProfileId = persisted.profileId || 'profile-default';
   const [leaderboardFilter, setLeaderboardFilter] = useState(() => {
     const { tab, diff } = getLeaderboardParams();
     if (tab === 'solo' && diff && Object.keys(DIFFICULTIES).includes(diff)) {
@@ -216,9 +366,22 @@ export default function App() {
   const isGameFlow = page === 'setup' || page === 'game';
   const activeNames = playerNames.slice(0, playerCount).map(n => n.trim());
   const lowerNames = activeNames.map(n => n.toLowerCase());
-  const isValidMultiplayer = mode !== 'local' || (!activeNames.some(n => !n) && new Set(lowerNames).size === activeNames.length);
+  const isValidMultiplayer = mode !== 'local' || (!activeNames.some(n => !n || !validatePlayerName(n).valid) && new Set(lowerNames).size === activeNames.length);
+  const soloTrimmed = soloPlayerName.trim();
+  const soloValidation = soloTrimmed ? validatePlayerName(soloTrimmed) : null;
+  const isSoloInvalid = Boolean(soloValidation && !soloValidation.valid);
+  const soloValidationError = soloValidation?.error || '';
 
-  useEffect(() => { saveStore({ ...persisted, dark, sound, displayName: customName }); }, [persisted, dark, sound, customName]);
+  useEffect(() => {
+    saveStore({
+      ...persisted,
+      profileId: currentProfileId,
+      dark,
+      sound,
+      displayName: profileName,
+      lastSoloName: soloPlayerName
+    });
+  }, [persisted, dark, sound, profileName, soloPlayerName, currentProfileId]);
   useEffect(() => {
     if (!running || paused || gameStatus !== 'playing') return undefined;
     const id = window.setInterval(() => {
@@ -283,6 +446,15 @@ export default function App() {
 
   const toast = (message) => { setNotice(message); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(''), 2600); };
   const startGame = (chosenMode = mode) => {
+    if (chosenMode === 'solo') {
+      const effectiveSoloName = soloPlayerName.trim() || 'Player';
+      const soloCheck = validatePlayerName(effectiveSoloName);
+      if (!soloCheck.valid) {
+        setSetupSubmitted(true);
+        toast(soloCheck.error);
+        return;
+      }
+    }
     if (chosenMode === 'local' && !isValidMultiplayer) {
       setSetupSubmitted(true);
       return;
@@ -302,10 +474,13 @@ export default function App() {
     recordedGameId.current = gameId;
     setRunning(false); setPaused(false); setGameStatus(timedOut ? 'timeout' : 'complete');
     const current = readStore();
-    const result = { id: gameId, mode, difficulty, theme: activeTheme, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : (customName || 'Player') };
+    const inGameSoloName = (soloPlayerName || '').trim() || 'Player';
+    const result = { id: gameId, mode, difficulty, theme: activeTheme, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : inGameSoloName };
     const isMeaningful = moves > 0;
     let newHistoryItems = [];
     let updatedMultiWins = { ...(current.multiplayerWins || {}) };
+    const legacyProfileWins = profileName.trim() ? (current.multiplayerWins?.[profileName.trim()] || 0) : 0;
+    let updatedProfileMultiWins = current.profileMultiWins ?? legacyProfileWins;
     
     if (isMeaningful) {
       if (isMultiplayer) {
@@ -347,15 +522,22 @@ export default function App() {
             }
           }
         }
+
+        const profileMatchIdx = playerNames.slice(0, playerCount).findIndex(n => n.trim().toLowerCase() === profileName.trim().toLowerCase());
+        const targetProfileIndex = profileMatchIdx !== -1 ? profileMatchIdx : 0;
         
         if (winnerIndex !== -1 && !isTie) {
           const winnerName = (playerNames[winnerIndex] || `Player ${winnerIndex + 1}`).trim();
           updatedMultiWins[winnerName] = (updatedMultiWins[winnerName] || 0) + 1;
+          if (winnerIndex === targetProfileIndex) {
+            updatedProfileMultiWins += 1;
+          }
         }
 
         for (let i = 0; i < playerCount; i++) {
           if (playerMoves[i] > 0 || scores[i] > 0) {
             const matchResult = isTie ? 'tie' : (i === winnerIndex ? 'winner' : 'loser');
+            const isProfileOwner = (i === targetProfileIndex);
             newHistoryItems.push({
               id: `${gameId}-${i}`,
               sessionId: gameId,
@@ -367,7 +549,8 @@ export default function App() {
               completedPairs: scores[i],
               date: new Date().toISOString(),
               name: playerNames[i] || `Player ${i + 1}`,
-              matchResult
+              matchResult,
+              ...(isProfileOwner ? { profileId: currentProfileId, isProfileOwner: true } : {})
             });
           }
         }
@@ -382,7 +565,9 @@ export default function App() {
           seconds,
           completedPairs,
           date: new Date().toISOString(),
-          name: customName || 'Player'
+          name: inGameSoloName,
+          profileId: currentProfileId,
+          isProfileOwner: true
         });
       }
     }
@@ -394,9 +579,25 @@ export default function App() {
       const bKey = `solo-${difficulty}`;
       if (!bests[bKey] || item.score > bests[bKey].score) bests[bKey] = item;
     });
-    const updated = { ...current, history, bests, multiplayerWins: updatedMultiWins, gamesPlayed: (current.gamesPlayed || 0) + 1, totalPairs: (current.totalPairs || 0) + completedPairs };
-    setPersisted(updated); saveStore({ ...updated, dark, sound, displayName: customName });
-  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, customName, dark, sound, playerMoves, playerCount]);
+    const updated = {
+      ...current,
+      profileId: currentProfileId,
+      history,
+      bests,
+      multiplayerWins: updatedMultiWins,
+      profileMultiWins: isMultiplayer ? updatedProfileMultiWins : current.profileMultiWins,
+      gamesPlayed: (current.gamesPlayed || 0) + 1,
+      totalPairs: (current.totalPairs || 0) + completedPairs
+    };
+    setPersisted(updated);
+    saveStore({
+      ...updated,
+      dark,
+      sound,
+      displayName: profileName,
+      lastSoloName: soloPlayerName
+    });
+  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, soloPlayerName, profileName, currentProfileId, dark, sound, playerMoves, playerCount]);
 
   useEffect(() => {
     if (complete && gameStatus === 'playing') finishGame(activeGameId.current, false, deck.length / 2);
@@ -740,7 +941,7 @@ export default function App() {
       <div className="top-actions">
         <button className="icon-btn theme-toggle-btn" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((v) => !v)}>{dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}</button>
         <button className="icon-btn settings-btn desktop-only" title="Settings" aria-label="Settings" onClick={() => nav('settings')}><Settings size={18} aria-hidden="true" /></button>
-        <button className="avatar desktop-only" aria-label="Profile" onClick={() => nav('profile')}>{(customName.trim()[0] || 'P').toUpperCase()}</button>
+        <button className="avatar desktop-only" aria-label="Profile" onClick={() => nav('profile')}>{(profileName.trim()[0] || 'P').toUpperCase()}</button>
         <button className="icon-btn mobile-menu-toggle" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} aria-controls="main-navigation" onClick={toggleMobileMenu}>{mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}</button>
       </div>
     </header>}
@@ -819,7 +1020,7 @@ export default function App() {
           <button className="btn text-btn" onClick={() => nav('leaderboard')}>View scores <ChevronRight size={16} /></button>
         </section>
       </>}
-      {page === 'setup' && <section className="setup-wrap"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT YOUR GAME</span><h1>{mode === 'solo' ? 'Solo challenge' : 'Play together'}</h1><p>{mode === 'solo' ? 'Pick a difficulty, choose a theme, and see how sharp your memory is.' : 'Add your players, pick a challenge, and pass the device around.'}</p></div><div className="setup-grid"><div className={`setup-panel ${setupActiveSection === 'difficulty' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'difficulty' ? null : 'difficulty')} aria-expanded={setupActiveSection === 'difficulty'}><div className="panel-heading"><span className="step-number">01</span><div className="panel-heading-text"><h3>Choose difficulty</h3><p className="panel-heading-desc">More pairs means a bigger challenge.</p></div></div><div className="setup-panel-summary"><span className="summary-pill">{difficulty} · {difficulty === 'Easy' ? '4 × 3' : difficulty === 'Normal' ? '4 × 4' : difficulty === 'Medium' ? '6 × 4' : difficulty === 'Hard' ? '6 × 6' : '8 × 6'} · {settings.pairs * 2} cards · {settings.time / 60} min</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'difficulty' ? 'open' : ''}`}><div className="difficulty-list">{Object.entries(DIFFICULTIES).map(([name, value]) => <button key={name} className={difficulty === name ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => { setDifficulty(name); setSetupActiveSection(null); }}><span className="radio-dot" /><span className="difficulty-label"><strong>{name}</strong><small>{value.pairs * 2} cards ({value.pairs} pairs) · {value.time / 60} min</small></span><span className="difficulty-size">{name === 'Easy' ? '4 × 3' : name === 'Normal' ? '4 × 4' : name === 'Medium' ? '6 × 4' : name === 'Hard' ? '6 × 6' : '8 × 6'}</span></button>)}</div></div></div><div className={`setup-panel ${setupActiveSection === 'theme' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'theme' ? null : 'theme')} aria-expanded={setupActiveSection === 'theme'}><div className="panel-heading"><span className="step-number">02</span><div className="panel-heading-text"><h3>Choose a card theme</h3><p className="panel-heading-desc">Just a little personality.</p></div></div><div className="setup-panel-summary"><span className="summary-pill"><span className="pill-theme-preview" style={{ display: 'inline-flex', gap: '3px', marginRight: '6px', opacity: 0.85, verticalAlign: '-2px' }}>{theme === 'Random' ? <Sparkles size={13} /> : theme === 'Symbols' ? <><Circle size={12} /><Triangle size={12} /></> : theme === 'Space' ? <><Rocket size={12} /><Earth size={12} /></> : theme === 'Animals' ? <><Cat size={12} /><PawPrint size={12} /></> : theme === 'Tech' ? <><Laptop size={12} /><Gamepad2 size={12} /></> : <><Coffee size={12} /><Book size={12} /></>}</span>{theme}</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'theme' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'theme' ? 'open' : ''}`}><div className="theme-options"><button className={theme === 'Random' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('Random'); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}><Sparkles size={14} /></span><span>Random</span></button>{Object.keys(THEMES).map((name) => <button key={name} className={theme === name ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme(name); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>{name === 'Symbols' ? <><Circle size={14} /><Triangle size={14} /><Square size={14} /></> : name === 'Space' ? <><Rocket size={14} /><Earth size={14} /><Satellite size={14} /></> : name === 'Animals' ? <><Cat size={14} /><Dog size={14} /><PawPrint size={14} /></> : name === 'Tech' ? <><Laptop size={14} /><Gamepad2 size={14} /><Cpu size={14} /></> : <><Coffee size={14} /><Book size={14} /><Gift size={14} /></>}</span><span>{name}</span></button>)}</div></div></div><div className="setup-panel players-panel"><div className="panel-heading"><span className="step-number">03</span><div><h3>{mode === 'solo' ? 'Your player name' : 'Meet the players'}</h3>{mode === 'solo' && <p>Your name appears in your results.</p>}</div></div>{mode === 'solo' ? <label className="field-label">Display name<input value={customName} maxLength={20} onChange={(e) => setCustomName(e.target.value)} placeholder="Enter your name" /></label> : <><div className="player-count">{[2, 3, 4].map((n) => <button key={n} className={playerCount === n ? 'count-btn selected' : 'count-btn'} onClick={() => setPlayerCount(n)}>{n} players</button>)}</div><div className="player-fields">{selectedPlayers.map((name, i) => { const tName = name.trim(); const lower = tName.toLowerCase(); const isEmpty = tName === ''; const isDup = !isEmpty && lowerNames.filter(n => n === lower).length > 1; const isInvalid = setupSubmitted && (isEmpty || isDup); return <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Player {i + 1}<input maxLength={20} value={name} onChange={(e) => setPlayerNames((old) => old.map((n, j) => j === i ? e.target.value : n))} placeholder={`Player ${i + 1}`} style={{ borderColor: isInvalid ? 'var(--danger)' : undefined }} /></label>{isInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {isEmpty ? 'Please enter a name for every active player.' : 'Player names must be unique.'}</span>}</div>; })}</div><label className="check-row"><input type="checkbox" checked={turnBased} onChange={(e) => setTurnBased(e.target.checked)} /><span><strong>Matching pair earns another turn</strong><small>Turn passes to the next player after a mismatch.</small></span></label></>}
+      {page === 'setup' && <section className="setup-wrap"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT YOUR GAME</span><h1>{mode === 'solo' ? 'Solo challenge' : 'Play together'}</h1><p>{mode === 'solo' ? 'Pick a difficulty, choose a theme, and see how sharp your memory is.' : 'Add your players, pick a challenge, and pass the device around.'}</p></div><div className="setup-grid"><div className={`setup-panel ${setupActiveSection === 'difficulty' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'difficulty' ? null : 'difficulty')} aria-expanded={setupActiveSection === 'difficulty'}><div className="panel-heading"><span className="step-number">01</span><div className="panel-heading-text"><h3>Choose difficulty</h3><p className="panel-heading-desc">More pairs means a bigger challenge.</p></div></div><div className="setup-panel-summary"><span className="summary-pill">{difficulty} · {difficulty === 'Easy' ? '4 × 3' : difficulty === 'Normal' ? '4 × 4' : difficulty === 'Medium' ? '6 × 4' : difficulty === 'Hard' ? '6 × 6' : '8 × 6'} · {settings.pairs * 2} cards · {settings.time / 60} min</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'difficulty' ? 'open' : ''}`}><div className="difficulty-list">{Object.entries(DIFFICULTIES).map(([name, value]) => <button key={name} className={difficulty === name ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => { setDifficulty(name); setSetupActiveSection(null); }}><span className="radio-dot" /><span className="difficulty-label"><strong>{name}</strong><small>{value.pairs * 2} cards ({value.pairs} pairs) · {value.time / 60} min</small></span><span className="difficulty-size">{name === 'Easy' ? '4 × 3' : name === 'Normal' ? '4 × 4' : name === 'Medium' ? '6 × 4' : name === 'Hard' ? '6 × 6' : '8 × 6'}</span></button>)}</div></div></div><div className={`setup-panel ${setupActiveSection === 'theme' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'theme' ? null : 'theme')} aria-expanded={setupActiveSection === 'theme'}><div className="panel-heading"><span className="step-number">02</span><div className="panel-heading-text"><h3>Choose a card theme</h3><p className="panel-heading-desc">Just a little personality.</p></div></div><div className="setup-panel-summary"><span className="summary-pill"><span className="pill-theme-preview" style={{ display: 'inline-flex', gap: '3px', marginRight: '6px', opacity: 0.85, verticalAlign: '-2px' }}>{theme === 'Random' ? <Sparkles size={13} /> : theme === 'Symbols' ? <><Circle size={12} /><Triangle size={12} /></> : theme === 'Space' ? <><Rocket size={12} /><Earth size={12} /></> : theme === 'Animals' ? <><Cat size={12} /><PawPrint size={12} /></> : theme === 'Tech' ? <><Laptop size={12} /><Gamepad2 size={12} /></> : <><Coffee size={12} /><Book size={12} /></>}</span>{theme}</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'theme' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'theme' ? 'open' : ''}`}><div className="theme-options"><button className={theme === 'Random' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('Random'); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}><Sparkles size={14} /></span><span>Random</span></button>{Object.keys(THEMES).map((name) => <button key={name} className={theme === name ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme(name); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>{name === 'Symbols' ? <><Circle size={14} /><Triangle size={14} /><Square size={14} /></> : name === 'Space' ? <><Rocket size={14} /><Earth size={14} /><Satellite size={14} /></> : name === 'Animals' ? <><Cat size={14} /><Dog size={14} /><PawPrint size={14} /></> : name === 'Tech' ? <><Laptop size={14} /><Gamepad2 size={14} /><Cpu size={14} /></> : <><Coffee size={14} /><Book size={14} /><Gift size={14} /></>}</span><span>{name}</span></button>)}</div></div></div><div className="setup-panel players-panel"><div className="panel-heading"><span className="step-number">03</span><div><h3>{mode === 'solo' ? 'Your player name' : 'Meet the players'}</h3>{mode === 'solo' && <p>Your name appears in your results.</p>}</div></div>{mode === 'solo' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Display name<input value={soloPlayerName} maxLength={20} onChange={(e) => setSoloPlayerName(e.target.value)} placeholder="Enter your name" style={{ borderColor: isSoloInvalid ? 'var(--danger)' : undefined }} /></label>{isSoloInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {soloValidationError}</span>}</div> : <><div className="player-count">{[2, 3, 4].map((n) => <button key={n} className={playerCount === n ? 'count-btn selected' : 'count-btn'} onClick={() => setPlayerCount(n)}>{n} players</button>)}</div><div className="player-fields">{selectedPlayers.map((name, i) => { const tName = name.trim(); const lower = tName.toLowerCase(); const isEmpty = tName === ''; const isDup = !isEmpty && lowerNames.filter(n => n === lower).length > 1; const nameVal = !isEmpty ? validatePlayerName(tName) : null; const isDisallowed = Boolean(nameVal && !nameVal.valid); const isInvalid = (setupSubmitted && isEmpty) || isDup || isDisallowed; const errorMessage = isEmpty ? 'Please enter a name for every active player.' : isDup ? 'Player names must be unique.' : nameVal?.error; return <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Player {i + 1}<input maxLength={20} value={name} onChange={(e) => setPlayerNames((old) => old.map((n, j) => j === i ? e.target.value : n))} placeholder={`Player ${i + 1}`} style={{ borderColor: isInvalid ? 'var(--danger)' : undefined }} /></label>{isInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {errorMessage}</span>}</div>; })}</div><label className="check-row"><input type="checkbox" checked={turnBased} onChange={(e) => setTurnBased(e.target.checked)} /><span><strong>Matching pair earns another turn</strong><small>Turn passes to the next player after a mismatch.</small></span></label></>}
         <div className="setup-summary">
           {mode === 'solo' ? (
             <>
@@ -1111,19 +1312,20 @@ export default function App() {
         ));
       })()}</div> : <div className="empty-state"><span className="empty-icon"><Users size={24} /></span><h3>No matches yet</h3><p>Complete a multiplayer match and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
       {page === 'profile' && (() => {
-        const playerNameTrimmed = (customName || '').trim();
-        const playerMultiWins = playerNameTrimmed ? (persisted.multiplayerWins?.[playerNameTrimmed] || 0) : 0;
+        const playerNameTrimmed = (profileName || '').trim();
         
-        // Personal records from valid completed solo games for the current profile player only
-        const isCurrentPlayerRecord = (r) => {
+        // Ownership verification: profileId match takes precedence; legacy fallback requires exact name match
+        const isCurrentProfileRecord = (r) => {
           if (!r) return false;
+          if (r.profileId) return r.profileId === currentProfileId;
+          if (r.isProfileOwner === true) return true;
           const rName = (r.name || 'Player').trim();
-          return rName.toLowerCase() === playerNameTrimmed.toLowerCase();
+          return Boolean(playerNameTrimmed && rName.toLowerCase() === playerNameTrimmed.toLowerCase());
         };
 
         const completedSoloGames = (persisted.history || []).filter(r => {
           if (!r || r.mode !== 'solo') return false;
-          if (!isCurrentPlayerRecord(r)) return false;
+          if (!isCurrentProfileRecord(r)) return false;
           const diffConfig = DIFFICULTIES[r.difficulty];
           if (!diffConfig) return false;
           const targetPairs = diffConfig.pairs;
@@ -1167,7 +1369,7 @@ export default function App() {
 
         (persisted.history || []).forEach(r => {
           if (!r) return;
-          if (!isCurrentPlayerRecord(r)) return;
+          if (!isCurrentProfileRecord(r)) return;
 
           const isSolo = r.mode === 'solo';
           const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
@@ -1195,7 +1397,7 @@ export default function App() {
           } else {
             // Validate completed multiplayer record for this player
             if (typeof r.completedPairs !== 'number' && typeof r.score !== 'number') return;
-            const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${playerNameTrimmed.toLowerCase()}`;
+            const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${r.profileId || (r.name || '').trim().toLowerCase()}`;
             
             // Increment match count only once per multiplayer match for this player
             if (seenProfileMatches.has(matchKey)) return;
@@ -1211,6 +1413,23 @@ export default function App() {
             }
           }
         });
+
+        // Compute multiplayer wins for the current profile
+        const seenWinMatches = new Set();
+        let historyMultiWins = 0;
+        (persisted.history || []).forEach(r => {
+          if (!r || (r.mode !== 'local' && r.mode !== 'multiplayer')) return;
+          if (!isCurrentProfileRecord(r)) return;
+          if (r.matchResult === 'winner') {
+            const matchKey = `win-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}`;
+            if (!seenWinMatches.has(matchKey)) {
+              seenWinMatches.add(matchKey);
+              historyMultiWins += 1;
+            }
+          }
+        });
+        const legacyMultiWins = playerNameTrimmed ? (persisted.multiplayerWins?.[playerNameTrimmed] || 0) : 0;
+        const playerMultiWins = Math.max(historyMultiWins, persisted.profileMultiWins || 0, legacyMultiWins);
 
         return (
           <section className="content-page focus-page">
@@ -1228,20 +1447,21 @@ export default function App() {
               <div className="profile-header-card">
                 <div className="profile-identity">
                   <div className="profile-avatar">
-                    {((isEditingName ? editNameInput : customName).trim()[0] || 'P').toUpperCase()}
+                    {((isEditingName ? editNameInput : profileName).trim()[0] || 'P').toUpperCase()}
                   </div>
                   <div className="profile-user-info">
                     <div className="profile-name-row">
-                      <h2>{customName || 'Player'}</h2>
+                      <h2>{profileName || 'Player'}</h2>
                       {!isEditingName && (
                         <button
                           type="button"
                           className="profile-edit-btn"
                           onClick={() => {
-                            setEditNameInput(customName);
+                            setEditNameInput(profileName);
+                            setProfileNameError('');
                             setIsEditingName(true);
                           }}
-                          aria-label="Edit display name"
+                          aria-label="Edit profile name"
                         >
                           <Pencil size={13} />
                           <span>Edit name</span>
@@ -1258,10 +1478,17 @@ export default function App() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       const trimmed = editNameInput.trim();
-                      const finalName = trimmed || 'Player';
-                      setCustomName(finalName);
+                      const validation = validatePlayerName(trimmed);
+                      if (!validation.valid) {
+                        setProfileNameError(validation.error);
+                        return;
+                      }
+                      setProfileNameError('');
+                      const finalName = trimmed;
+                      setProfileName(finalName);
+                      setPersisted(prev => ({ ...prev, displayName: finalName }));
                       setIsEditingName(false);
-                      toast('Display name updated.');
+                      toast('Profile name updated.');
                     }}
                   >
                     <div className="profile-input-group">
@@ -1269,9 +1496,13 @@ export default function App() {
                         value={editNameInput}
                         maxLength={20}
                         autoFocus
-                        onChange={(e) => setEditNameInput(e.target.value)}
-                        placeholder="Enter your name"
-                        aria-label="Display name"
+                        onChange={(e) => {
+                          setEditNameInput(e.target.value);
+                          if (profileNameError) setProfileNameError('');
+                        }}
+                        placeholder="Enter profile name"
+                        aria-label="Profile name"
+                        style={{ borderColor: profileNameError ? 'var(--danger)' : undefined }}
                       />
                       <div className="profile-form-actions">
                         <button type="submit" className="btn primary small-btn">
@@ -1281,7 +1512,8 @@ export default function App() {
                           type="button"
                           className="btn secondary small-btn"
                           onClick={() => {
-                            setEditNameInput(customName);
+                            setEditNameInput(profileName);
+                            setProfileNameError('');
                             setIsEditingName(false);
                           }}
                         >
@@ -1289,7 +1521,12 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <span className="profile-input-hint">Used in your solo records and match results (up to 20 characters).</span>
+                    {profileNameError && (
+                      <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
+                        <AlertCircle size={13} /> {profileNameError}
+                      </span>
+                    )}
+                    <span className="profile-input-hint">Your profile owner name on this device (up to 20 characters).</span>
                   </form>
                 ) : null}
               </div>
@@ -1473,7 +1710,11 @@ export default function App() {
                     type="button"
                     className="btn danger-solid-btn small-btn"
                     onClick={() => {
-                      const clean = { displayName: customName };
+                      const clean = {
+                        profileId: currentProfileId,
+                        displayName: profileName,
+                        lastSoloName: soloPlayerName
+                      };
                       setPersisted(clean);
                       saveStore({ ...clean, dark, sound });
                       setShowClearConfirm(false);
