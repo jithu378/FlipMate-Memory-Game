@@ -365,10 +365,19 @@ export default function App() {
         setMatched((old) => [...old, ...next]);
         setScores((oldScores) => { const updated = [...oldScores]; updated[activePlayer] += 1; return updated; });
         setFlipped([]);
+        if (isMultiplayer && !turnBased) {
+          setActivePlayer((p) => (p + 1) % playerCount);
+        }
         if (sound) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 660; gain.gain.value = 0.035; osc.start(); osc.stop(ctx.currentTime + 0.07); osc.onended = () => ctx.close(); } catch { /* sound is optional */ } }
       }, 280);
     } else {
-      window.setTimeout(() => { if (activeGameId.current !== gameId) return; setFlipped([]); if (isMultiplayer && turnBased) setActivePlayer((p) => (p + 1) % playerCount); }, 780);
+      window.setTimeout(() => {
+        if (activeGameId.current !== gameId) return;
+        setFlipped([]);
+        if (isMultiplayer) {
+          setActivePlayer((p) => (p + 1) % playerCount);
+        }
+      }, 780);
     }
   };
   const useHint = () => {
