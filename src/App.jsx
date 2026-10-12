@@ -55,11 +55,48 @@ const readStore = () => {
     const data = raw ? JSON.parse(raw) : {};
     if (!data.profileId) {
       data.profileId = createGameId();
-      try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* private browsing may block storage */ }
     }
+    const defaultProfileName = data.displayName || 'Player';
+    if (!Array.isArray(data.players) || data.players.length === 0) {
+      data.players = [{
+        id: data.profileId,
+        name: defaultProfileName,
+        isDefaultProfile: true,
+        createdAt: new Date().toISOString()
+      }];
+    } else {
+      const hasMain = data.players.some((p) => p && p.id === data.profileId);
+      if (!hasMain) {
+        data.players.unshift({
+          id: data.profileId,
+          name: defaultProfileName,
+          isDefaultProfile: true,
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        const mainIdx = data.players.findIndex((p) => p && p.id === data.profileId);
+        if (mainIdx !== -1 && data.displayName && data.players[mainIdx].name !== data.displayName) {
+          data.players[mainIdx] = {
+            ...data.players[mainIdx],
+            name: data.displayName
+          };
+        }
+      }
+    }
+    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* private browsing may block storage */ }
     return data;
   } catch {
-    return { profileId: 'profile-default' };
+    const fallbackId = 'profile-default';
+    return {
+      profileId: fallbackId,
+      displayName: 'Player',
+      players: [{
+        id: fallbackId,
+        name: 'Player',
+        isDefaultProfile: true,
+        createdAt: new Date().toISOString()
+      }]
+    };
   }
 };
 const saveStore = (data) => { try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* private browsing may block storage */ } };
@@ -297,21 +334,60 @@ export const hasBlockedTerms = (rawName) => {
   return false;
 };
 
-export const validatePlayerName = (rawName, { allowEmpty = false } = {}) => {
-  const name = (rawName ?? '').trim();
-  if (!name) {
+export const validatePlayerName = (rawName, { allowEmpty = false, existingPlayers = [], currentPlayerId = null } = {}) => {
+  if (rawName === undefined || rawName === null || rawName === '') {
     if (allowEmpty) return { valid: true };
     return { valid: false, error: 'Please enter a name.' };
   }
+
+  const name = String(rawName);
+
   if (name.length > 20) {
     return { valid: false, error: 'Name must be 20 characters or fewer.' };
   }
+
+  if (name.startsWith(' ') || name.endsWith(' ')) {
+    return { valid: false, error: 'Name cannot have leading or trailing spaces.' };
+  }
+
+  if (name.includes('  ')) {
+    return { valid: false, error: 'Name cannot contain consecutive spaces.' };
+  }
+
+  // Only English letters, digits, and valid single spaces
+  if (!/^[A-Za-z0-9 ]+$/.test(name)) {
+    return { valid: false, error: 'Name can only contain English letters, digits, and spaces.' };
+  }
+
+  // At least one letter
+  if (!/[A-Za-z]/.test(name)) {
+    return { valid: false, error: 'Name must contain at least one letter.' };
+  }
+
+  // Spaces may separate letter-containing segments, but must not separate a word from a number
+  const segments = name.split(' ');
+  for (const seg of segments) {
+    if (!/[A-Za-z]/.test(seg)) {
+      return { valid: false, error: 'Spaces cannot separate words from numbers. Numbers can be joined directly (e.g. jithu123).' };
+    }
+  }
+
   if (isReservedDeveloperName(name)) {
     return { valid: false, error: 'This name is reserved for the developer. Please choose a different name.' };
   }
+
   if (hasBlockedTerms(name)) {
     return { valid: false, error: 'This name contains disallowed language. Please choose a different name.' };
   }
+
+  if (existingPlayers && existingPlayers.length > 0) {
+    const lower = name.toLowerCase();
+    const isTaken = existingPlayers.some((p) => p && p.id !== currentPlayerId && p.name && p.name.trim().toLowerCase() === lower);
+    if (isTaken) {
+      return { valid: false, error: 'This player name is already taken. Please choose a unique name.' };
+    }
+  }
+
   return { valid: true };
 };
 
@@ -382,17 +458,17 @@ export class ErrorBoundary extends React.Component {
   }
 }
 
-// Helper to calculate authoritative profile dashboard statistics
-const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
-  const normalizedProfileName = (profileName || '').trim();
+export const isPlayerRecord = (r, targetPlayerId, defaultProfileId) => {
+  if (!r) return false;
+  if (r.playerId) return r.playerId === targetPlayerId;
+  if (r.profileId) return r.profileId === targetPlayerId;
+  if (r.isProfileOwner === true && targetPlayerId === defaultProfileId) return true;
+  return false;
+};
 
-  const isCurrentProfileRecord = (r) => {
-    if (!r) return false;
-    if (r.profileId) return r.profileId === currentProfileId;
-    if (r.isProfileOwner === true) return true;
-    const rName = (r.name || 'Player').trim();
-    return Boolean(normalizedProfileName && rName.toLowerCase() === normalizedProfileName.toLowerCase());
-  };
+export const calculatePlayerStats = (historyList, targetPlayerId, persistedData = {}) => {
+  const defaultProfileId = persistedData.profileId || 'profile-default';
+  const isTargetRecord = (r) => isPlayerRecord(r, targetPlayerId, defaultProfileId);
 
   const seenProfileMatches = new Set();
   let totalGamesPlayed = 0;
@@ -400,10 +476,12 @@ const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
   let totalOverallScore = 0;
   let bestSoloScore = null;
   const difficultyCounts = {};
+  const completedSoloGames = [];
+  const seenWinMatches = new Set();
+  let historyMultiWins = 0;
 
   (historyList || []).forEach((r) => {
-    if (!r) return;
-    if (!isCurrentProfileRecord(r)) return;
+    if (!r || !isTargetRecord(r)) return;
 
     const isSolo = r.mode === 'solo';
     const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
@@ -424,7 +502,8 @@ const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
       seenProfileMatches.add(matchKey);
 
       totalGamesPlayed += 1;
-      totalPairsMatched += (typeof r.completedPairs === 'number' ? r.completedPairs : expectedPairs);
+      const pairs = (typeof r.completedPairs === 'number' ? r.completedPairs : expectedPairs);
+      totalPairsMatched += pairs;
       const scoreNum = Number(r.score);
       if (Number.isFinite(scoreNum)) {
         totalOverallScore += scoreNum;
@@ -436,9 +515,11 @@ const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
       if (r.difficulty) {
         difficultyCounts[r.difficulty] = (difficultyCounts[r.difficulty] || 0) + 1;
       }
+
+      completedSoloGames.push(r);
     } else {
       if (typeof r.completedPairs !== 'number' && typeof r.score !== 'number') return;
-      const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${r.profileId || (r.name || '').trim().toLowerCase()}`;
+      const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${targetPlayerId}`;
       if (seenProfileMatches.has(matchKey)) return;
       seenProfileMatches.add(matchKey);
 
@@ -454,10 +535,17 @@ const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
       if (r.difficulty) {
         difficultyCounts[r.difficulty] = (difficultyCounts[r.difficulty] || 0) + 1;
       }
+
+      if (r.matchResult === 'winner') {
+        const winKey = `win-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}`;
+        if (!seenWinMatches.has(winKey)) {
+          seenWinMatches.add(winKey);
+          historyMultiWins += 1;
+        }
+      }
     }
   });
 
-  // Calculate most played difficulty only if there's a clear leader
   let mostPlayedDifficulty = null;
   const diffEntries = Object.entries(difficultyCounts);
   if (diffEntries.length > 0) {
@@ -469,13 +557,57 @@ const getProfileHomeStats = (historyList, currentProfileId, profileName) => {
     }
   }
 
+  const bestScoreRecord = completedSoloGames.length
+    ? [...completedSoloGames].sort((a, b) => {
+        if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+        return (a.seconds || Infinity) - (b.seconds || Infinity);
+      })[0]
+    : null;
+
+  const validTimeGames = completedSoloGames.filter((r) => typeof r.seconds === 'number' && r.seconds > 0);
+  const fastestRecord = validTimeGames.length
+    ? [...validTimeGames].sort((a, b) => {
+        if (a.seconds !== b.seconds) return a.seconds - b.seconds;
+        return (b.score || 0) - (a.score || 0);
+      })[0]
+    : null;
+
+  const validMovesGames = completedSoloGames.filter((r) => {
+    const minPairs = DIFFICULTIES[r.difficulty]?.pairs || 1;
+    return typeof r.moves === 'number' && r.moves >= minPairs;
+  });
+  const fewestMovesRecord = validMovesGames.length
+    ? [...validMovesGames].sort((a, b) => {
+        if (a.moves !== b.moves) return a.moves - b.moves;
+        return (a.seconds || Infinity) - (b.seconds || Infinity);
+      })[0]
+    : null;
+
+  const isMainProfile = (targetPlayerId === defaultProfileId);
+  const registeredPlayer = (persistedData.players || []).find((p) => p && p.id === targetPlayerId);
+  const playerName = registeredPlayer?.name || (isMainProfile ? persistedData.displayName : '') || '';
+  const legacyMultiWins = playerName.trim() ? (persistedData.multiplayerWins?.[playerName.trim()] || 0) : 0;
+  const playerMultiWins = Math.max(
+    historyMultiWins,
+    isMainProfile ? (persistedData.profileMultiWins || 0) : 0,
+    legacyMultiWins
+  );
+
   return {
     gamesPlayed: totalGamesPlayed,
     pairsMatched: totalPairsMatched,
     overallScore: totalOverallScore,
     bestSoloScore,
-    mostPlayedDifficulty
+    mostPlayedDifficulty,
+    multiplayerWins: playerMultiWins,
+    bestScoreRecord,
+    fastestRecord,
+    fewestMovesRecord
   };
+};
+
+const getProfileHomeStats = (historyList, currentProfileId, persistedData) => {
+  return calculatePlayerStats(historyList, currentProfileId, persistedData);
 };
 
 export default function App() {
@@ -527,9 +659,26 @@ export default function App() {
   const [profileNameError, setProfileNameError] = useState('');
   const currentProfileId = persisted.profileId || 'profile-default';
 
+  const [slotPlayerIds, setSlotPlayerIds] = useState(() => {
+    const store = readStore();
+    const mainId = store.profileId || 'profile-default';
+    const otherPlayers = (store.players || []).filter((p) => p && p.id !== mainId);
+    return [
+      mainId,
+      otherPlayers[0]?.id || '',
+      otherPlayers[1]?.id || '',
+      otherPlayers[2]?.id || ''
+    ];
+  });
+  const [creatingSlotIndex, setCreatingSlotIndex] = useState(null);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerError, setNewPlayerError] = useState('');
+  const frozenSoloPlayerName = useRef(soloPlayerName);
+  const frozenMatchSlots = useRef([]);
+
   const homeStats = useMemo(() => {
-    return getProfileHomeStats(persisted.history, currentProfileId, profileName);
-  }, [persisted.history, currentProfileId, profileName]);
+    return getProfileHomeStats(persisted.history, currentProfileId, persisted);
+  }, [persisted.history, currentProfileId, persisted]);
   const [leaderboardFilter, setLeaderboardFilter] = useState(() => {
     const { tab, diff } = getLeaderboardParams();
     if (tab === 'solo' && diff && Object.keys(DIFFICULTIES).includes(diff)) {
@@ -569,13 +718,111 @@ export default function App() {
   const accuracy = moves ? Math.round((matched.length / 2 / moves) * 100) : 0;
   const isGameplayActive = page === 'game' && (gameStatus === 'playing' || gameStatus === 'paused');
   const isGameFlow = page === 'setup' || page === 'game';
-  const activeNames = playerNames.slice(0, playerCount).map(n => n.trim());
-  const lowerNames = activeNames.map(n => n.toLowerCase());
-  const isValidMultiplayer = mode !== 'local' || (!activeNames.some(n => !n || !validatePlayerName(n).valid) && new Set(lowerNames).size === activeNames.length);
+  
+  const activeSlotPlayerIds = slotPlayerIds.slice(0, playerCount);
+  const isUniquePlayers = activeSlotPlayerIds.every(Boolean) && new Set(activeSlotPlayerIds).size === playerCount;
+  const isSlotNamesValid = activeSlotPlayerIds.every((id, idx) => {
+    const assigned = (persisted.players || []).find((p) => p && p.id === id);
+    const disp = (playerNames[idx] || '').trim() || (assigned ? assigned.name : `Player ${idx + 1}`);
+    return validatePlayerName(disp).valid;
+  });
+  const isValidMultiplayer = mode !== 'local' || (isUniquePlayers && isSlotNamesValid);
   const soloTrimmed = soloPlayerName.trim();
   const soloValidation = soloTrimmed ? validatePlayerName(soloTrimmed) : null;
   const isSoloInvalid = Boolean(soloValidation && !soloValidation.valid);
   const soloValidationError = soloValidation?.error || '';
+
+  useEffect(() => {
+    if (mode !== 'local') return;
+    const allPlayers = persisted.players || [];
+    setSlotPlayerIds((prev) => {
+      const next = [...prev];
+      if (!next[0]) next[0] = currentProfileId;
+      let changed = false;
+      for (let i = 0; i < playerCount; i++) {
+        if (!next[i]) {
+          const unassigned = allPlayers.find((p) => p && !next.slice(0, i).includes(p.id));
+          if (unassigned) {
+            next[i] = unassigned.id;
+            changed = true;
+            setPlayerNames((old) => {
+              const o = [...old];
+              if (!o[i]) o[i] = unassigned.name;
+              return o;
+            });
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [playerCount, mode, persisted.players, currentProfileId]);
+
+  const handleSlotPlayerChange = (slotIndex, selectedValue) => {
+    if (selectedValue === '__new__') {
+      setCreatingSlotIndex(slotIndex);
+      setNewPlayerName('');
+      setNewPlayerError('');
+    } else {
+      setCreatingSlotIndex(null);
+      setNewPlayerError('');
+      setSlotPlayerIds((prev) => {
+        const next = [...prev];
+        next[slotIndex] = selectedValue;
+        return next;
+      });
+      const selectedPlayer = (persisted.players || []).find((p) => p && p.id === selectedValue);
+      if (selectedPlayer) {
+        setPlayerNames((prev) => {
+          const next = [...prev];
+          next[slotIndex] = selectedPlayer.name;
+          return next;
+        });
+      }
+    }
+  };
+
+  const handleRegisterNewPlayer = (slotIndex) => {
+    const trimmed = newPlayerName.trim();
+    const validation = validatePlayerName(trimmed, {
+      existingPlayers: persisted.players || []
+    });
+    if (!validation.valid) {
+      setNewPlayerError(validation.error);
+      return;
+    }
+    const newId = createGameId();
+    const newPlayer = {
+      id: newId,
+      name: trimmed,
+      isDefaultProfile: false,
+      createdAt: new Date().toISOString()
+    };
+    const updatedPlayers = [...(persisted.players || []), newPlayer];
+    const updatedPersisted = { ...persisted, players: updatedPlayers };
+    setPersisted(updatedPersisted);
+    saveStore({
+      ...updatedPersisted,
+      dark,
+      sound,
+      displayName: profileName,
+      lastSoloName: soloPlayerName,
+      players: updatedPlayers
+    });
+    setSlotPlayerIds((prev) => {
+      const next = [...prev];
+      next[slotIndex] = newId;
+      return next;
+    });
+    setPlayerNames((prev) => {
+      const next = [...prev];
+      next[slotIndex] = trimmed;
+      return next;
+    });
+    setCreatingSlotIndex(null);
+    setNewPlayerName('');
+    setNewPlayerError('');
+    toast(`Player "${trimmed}" registered.`);
+  };
 
   useEffect(() => {
     saveStore({
@@ -584,7 +831,8 @@ export default function App() {
       dark,
       sound,
       displayName: profileName,
-      lastSoloName: soloPlayerName
+      lastSoloName: soloPlayerName,
+      players: persisted.players || [{ id: currentProfileId, name: profileName, isDefaultProfile: true, createdAt: new Date().toISOString() }]
     });
   }, [persisted, dark, sound, profileName, soloPlayerName, currentProfileId]);
   useEffect(() => {
@@ -652,17 +900,46 @@ export default function App() {
   const toast = (message) => { setNotice(message); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(''), 2600); };
   const startGame = (chosenMode = mode) => {
     if (chosenMode === 'solo') {
-      const effectiveSoloName = soloPlayerName.trim() || 'Player';
+      const effectiveSoloName = soloPlayerName.trim() || profileName || 'Player';
       const soloCheck = validatePlayerName(effectiveSoloName);
       if (!soloCheck.valid) {
         setSetupSubmitted(true);
         toast(soloCheck.error);
         return;
       }
+      frozenSoloPlayerName.current = effectiveSoloName;
     }
-    if (chosenMode === 'local' && !isValidMultiplayer) {
-      setSetupSubmitted(true);
-      return;
+    if (chosenMode === 'local') {
+      const activeSlotIds = slotPlayerIds.slice(0, playerCount);
+      if (activeSlotIds.some((id) => !id)) {
+        setSetupSubmitted(true);
+        toast('Please assign or add a player for each slot.');
+        return;
+      }
+      if (new Set(activeSlotIds).size !== playerCount) {
+        setSetupSubmitted(true);
+        toast('Each slot must have a different registered player.');
+        return;
+      }
+      const frozenSlots = [];
+      const updatedNames = [...playerNames];
+      for (let i = 0; i < playerCount; i++) {
+        const assigned = (persisted.players || []).find((p) => p && p.id === activeSlotIds[i]);
+        const disp = (playerNames[i] || '').trim() || (assigned ? assigned.name : `Player ${i + 1}`);
+        const check = validatePlayerName(disp);
+        if (!check.valid) {
+          setSetupSubmitted(true);
+          toast(`Player ${i + 1} display name: ${check.error}`);
+          return;
+        }
+        frozenSlots.push({
+          playerId: activeSlotIds[i],
+          displayName: disp
+        });
+        updatedNames[i] = disp;
+      }
+      frozenMatchSlots.current = frozenSlots;
+      setPlayerNames(updatedNames);
     }
     setSetupSubmitted(false);
     window.clearTimeout(hintTimer.current);
@@ -679,16 +956,21 @@ export default function App() {
     recordedGameId.current = gameId;
     setRunning(false); setPaused(false); setGameStatus(timedOut ? 'timeout' : 'complete');
     const current = readStore();
-    const inGameSoloName = (soloPlayerName || '').trim() || 'Player';
-    const result = { id: gameId, mode, difficulty, theme: activeTheme, score: isMultiplayer ? Math.max(...scores) * 100 : Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)), moves, seconds, completedPairs, date: new Date().toISOString(), name: isMultiplayer ? playerNames[scores.indexOf(Math.max(...scores))] : inGameSoloName };
+    const inGameSoloName = frozenSoloPlayerName.current || (soloPlayerName || '').trim() || 'Player';
     const isMeaningful = moves > 0;
     let newHistoryItems = [];
     let updatedMultiWins = { ...(current.multiplayerWins || {}) };
-    const legacyProfileWins = profileName.trim() ? (current.multiplayerWins?.[profileName.trim()] || 0) : 0;
-    let updatedProfileMultiWins = current.profileMultiWins ?? legacyProfileWins;
+    let updatedProfileMultiWins = current.profileMultiWins ?? (current.multiplayerWins?.[currentProfileId] || current.multiplayerWins?.[profileName.trim()] || 0);
     
     if (isMeaningful) {
       if (isMultiplayer) {
+        const slots = (frozenMatchSlots.current && frozenMatchSlots.current.length === playerCount)
+          ? frozenMatchSlots.current
+          : slotPlayerIds.slice(0, playerCount).map((id, i) => ({
+              playerId: id || `guest-${i}`,
+              displayName: (playerNames[i] || '').trim() || `Player ${i + 1}`
+            }));
+
         const playerStats = [];
         for (let i = 0; i < playerCount; i++) {
           if (playerMoves[i] > 0 || scores[i] > 0) {
@@ -728,24 +1010,29 @@ export default function App() {
           }
         }
 
-        const profileMatchIdx = playerNames.slice(0, playerCount).findIndex(n => n.trim().toLowerCase() === profileName.trim().toLowerCase());
-        const targetProfileIndex = profileMatchIdx !== -1 ? profileMatchIdx : 0;
-        
         if (winnerIndex !== -1 && !isTie) {
-          const winnerName = (playerNames[winnerIndex] || `Player ${winnerIndex + 1}`).trim();
-          updatedMultiWins[winnerName] = (updatedMultiWins[winnerName] || 0) + 1;
-          if (winnerIndex === targetProfileIndex) {
+          const winnerSlot = slots[winnerIndex];
+          if (winnerSlot && winnerSlot.playerId === currentProfileId) {
             updatedProfileMultiWins += 1;
+          }
+          if (winnerSlot) {
+            const winnerName = (winnerSlot.displayName || `Player ${winnerIndex + 1}`).trim();
+            updatedMultiWins[winnerName] = (updatedMultiWins[winnerName] || 0) + 1;
+            if (winnerSlot.playerId) {
+              updatedMultiWins[winnerSlot.playerId] = (updatedMultiWins[winnerSlot.playerId] || 0) + 1;
+            }
           }
         }
 
         for (let i = 0; i < playerCount; i++) {
           if (playerMoves[i] > 0 || scores[i] > 0) {
             const matchResult = isTie ? 'tie' : (i === winnerIndex ? 'winner' : 'loser');
-            const isProfileOwner = (i === targetProfileIndex);
+            const slot = slots[i];
+            const isProfileOwner = (slot.playerId === currentProfileId);
             newHistoryItems.push({
               id: `${gameId}-${i}`,
               sessionId: gameId,
+              playerId: slot.playerId,
               mode,
               difficulty,
               score: Math.max(0, Math.round(scores[i] * 100 * settings.multiplier - playerMoves[i] * 5 - seconds)),
@@ -753,7 +1040,7 @@ export default function App() {
               seconds,
               completedPairs: scores[i],
               date: new Date().toISOString(),
-              name: playerNames[i] || `Player ${i + 1}`,
+              name: slot.displayName,
               matchResult,
               ...(isProfileOwner ? { profileId: currentProfileId, isProfileOwner: true } : {})
             });
@@ -763,6 +1050,7 @@ export default function App() {
         newHistoryItems.push({
           id: gameId,
           sessionId: gameId,
+          playerId: currentProfileId,
           mode,
           difficulty,
           score: Math.max(0, Math.round(completedPairs * 100 * settings.multiplier - moves * 5 - seconds)),
@@ -776,10 +1064,10 @@ export default function App() {
         });
       }
     }
-    const history = isMeaningful ? [...newHistoryItems, ...(current.history || []).filter(r => r.sessionId !== gameId && r.id !== gameId && !r.id?.startsWith(`${gameId}-`))].slice(0, 50) : (current.history || []);
+    const history = isMeaningful ? [...newHistoryItems, ...(current.history || []).filter((r) => r.sessionId !== gameId && r.id !== gameId && !r.id?.startsWith(`${gameId}-`))].slice(0, 50) : (current.history || []);
     const bestKey = `${mode}-${difficulty}`;
     const bests = { ...(current.bests || {}) };
-    newHistoryItems.forEach(item => {
+    newHistoryItems.forEach((item) => {
       if (item.mode !== 'solo') return;
       const bKey = `solo-${difficulty}`;
       if (!bests[bKey] || item.score > bests[bKey].score) bests[bKey] = item;
@@ -800,9 +1088,10 @@ export default function App() {
       dark,
       sound,
       displayName: profileName,
-      lastSoloName: soloPlayerName
+      lastSoloName: soloPlayerName,
+      players: current.players || persisted.players
     });
-  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, soloPlayerName, profileName, currentProfileId, dark, sound, playerMoves, playerCount]);
+  }, [mode, isMultiplayer, scores, matched.length, settings.multiplier, moves, seconds, difficulty, playerNames, soloPlayerName, profileName, currentProfileId, dark, sound, playerMoves, playerCount, slotPlayerIds]);
 
   useEffect(() => {
     if (complete && gameStatus === 'playing') finishGame(activeGameId.current, false, deck.length / 2);
@@ -868,13 +1157,13 @@ export default function App() {
     let multiBestsArray = [];
     const multiPlayerDiffs = new window.Map();
 
-    cleanHistory.forEach(r => {
+    cleanHistory.forEach((r) => {
       if (!r || r.score === 0) return;
       const isSolo = r.mode === 'solo';
       const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
       if (!isSolo && !isMulti) return;
-      const pName = (r.name || 'Player').trim();
-      const key = `${pName}-${r.difficulty}`;
+      const pKey = r.playerId ? `p_${r.playerId}` : (r.profileId ? `p_${r.profileId}` : (r.isProfileOwner ? `p_${currentProfileId}` : `legacy_${(r.name || 'Player').trim().toLowerCase()}`));
+      const key = `${pKey}-${r.difficulty}`;
       if (isSolo) {
         if (!playerDiffs.has(key)) playerDiffs.set(key, []);
         playerDiffs.get(key).push(r);
@@ -918,8 +1207,8 @@ export default function App() {
     });
 
     multiBestsArray.sort((a, b) => {
-      const winsA = multiWins[a.name] || 0;
-      const winsB = multiWins[b.name] || 0;
+      const winsA = multiWins[a.name] || (a.playerId && multiWins[a.playerId]) || 0;
+      const winsB = multiWins[b.name] || (b.playerId && multiWins[b.playerId]) || 0;
       if (winsA !== winsB) return winsB - winsA;
       if (b.score !== a.score) return b.score - a.score;
       return b.completedPairs - a.completedPairs;
@@ -928,24 +1217,47 @@ export default function App() {
     const isMultiMode = (r) => Boolean(r && (r.mode === 'local' || r.mode === 'multiplayer'));
     const multiPlayerStatsMap = new window.Map();
     const seenMatchPlayer = new Set();
-    cleanHistory.filter(isMultiMode).forEach(r => {
+    cleanHistory.filter(isMultiMode).forEach((r) => {
+      const pKey = r.playerId ? `p_${r.playerId}` : (r.profileId ? `p_${r.profileId}` : (r.isProfileOwner ? `p_${currentProfileId}` : `legacy_${(r.name || 'Player').trim().toLowerCase()}`));
       const pName = (r.name || 'Player').trim();
-      const matchKey = `${r.sessionId || `legacy-${r.date}`}-${pName}`;
+      const matchKey = `${r.sessionId || `legacy-${r.date}`}-${pKey}`;
       if (seenMatchPlayer.has(matchKey)) return;
       seenMatchPlayer.add(matchKey);
 
-      let stat = multiPlayerStatsMap.get(pName);
+      let stat = multiPlayerStatsMap.get(pKey);
       if (!stat) {
-        stat = { name: pName, totalScore: 0, gamesPlayed: 0, completedPairs: 0, moves: 0, wins: multiWins[pName] || 0 };
-        multiPlayerStatsMap.set(pName, stat);
+        const regPlayer = (persisted.players || []).find((p) => p && p.id === (r.playerId || r.profileId));
+        const isOwner = r.isProfileOwner || (r.playerId === currentProfileId) || (r.profileId === currentProfileId);
+        const displayName = regPlayer?.name || (isOwner ? profileName : pName);
+        stat = {
+          playerKey: pKey,
+          playerId: r.playerId || r.profileId || null,
+          name: displayName,
+          totalScore: 0,
+          gamesPlayed: 0,
+          completedPairs: 0,
+          moves: 0,
+          wins: 0
+        };
+        multiPlayerStatsMap.set(pKey, stat);
       }
       stat.totalScore += r.score || 0;
       stat.gamesPlayed += 1;
       stat.completedPairs += r.completedPairs || 0;
       stat.moves += r.moves || 0;
+      if (r.matchResult === 'winner') {
+        stat.wins += 1;
+      }
     });
 
     let multiTopPlayers = Array.from(multiPlayerStatsMap.values());
+    multiTopPlayers.forEach((stat) => {
+      const fromWins = stat.playerId
+        ? (multiWins[stat.playerId] || multiWins[stat.name] || 0)
+        : (multiWins[stat.name] || 0);
+      stat.wins = Math.max(stat.wins, fromWins);
+    });
+
     multiTopPlayers.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       if (b.completedPairs !== a.completedPairs) return b.completedPairs - a.completedPairs;
@@ -976,7 +1288,7 @@ export default function App() {
 
     const multiRecords = cleanHistory.filter(isMultiMode);
     const multiMatchesMap = new window.Map();
-    multiRecords.forEach(r => {
+    multiRecords.forEach((r) => {
       const k = r.sessionId || `legacy-${r.date}`;
       if (!multiMatchesMap.has(k)) {
         multiMatchesMap.set(k, { id: k, date: r.date, difficulty: r.difficulty, records: [] });
@@ -1041,21 +1353,21 @@ export default function App() {
     multiMatches.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
     let hList = [...cleanHistory];
-    const pSet = new Set(cleanHistory.map(r => (r.name || 'Player').trim()));
+    const pSet = new Set(cleanHistory.map((r) => (r.name || 'Player').trim()));
 
     bestsArray = bestsArray.filter((r) => r.difficulty === leaderboardFilter);
     multiBestsArray = multiBestsArray.filter((r) => r.difficulty === leaderboardFilter);
     hList = hList.filter((r) => r.difficulty === historyFilter);
 
     if (historyPlayerFilter) {
-      hList = hList.filter(r => (r.name || 'Player').trim() === historyPlayerFilter);
+      hList = hList.filter((r) => (r.name || 'Player').trim() === historyPlayerFilter);
     }
 
     if (historySort === 'score') hList.sort((a, b) => b.score - a.score);
     else if (historySort === 'time') hList.sort((a, b) => (a.seconds || Infinity) - (b.seconds || Infinity));
 
     return { bests: bestsArray.slice(0, 50), multiBests: multiBestsArray.slice(0, 50), multiTopPlayers: multiTopPlayers.slice(0, 50), multiMatches, historyList: hList, allPlayers: Array.from(pSet), multiWins };
-  }, [persisted.history, persisted.multiplayerWins, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
+  }, [persisted.history, persisted.multiplayerWins, persisted.players, currentProfileId, leaderboardFilter, historyFilter, historySort, historyPlayerFilter]);
   const bestSolo = (persisted.history || []).filter((r) => r.mode === 'solo').sort((a, b) => b.score - a.score)[0];
   const renderRankBadge = (rank) => {
     if (rank === 1) {
@@ -1272,7 +1584,7 @@ export default function App() {
           <button className="btn text-btn" onClick={() => nav('leaderboard')}>View scores <ChevronRight size={16} /></button>
         </section>
       </>}
-      {page === 'setup' && <section className="setup-wrap"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT YOUR GAME</span><h1>{mode === 'solo' ? 'Solo challenge' : 'Play together'}</h1><p>{mode === 'solo' ? 'Pick a difficulty, choose a theme, and see how sharp your memory is.' : 'Add your players, pick a challenge, and pass the device around.'}</p></div><div className="setup-grid"><div className={`setup-panel ${setupActiveSection === 'difficulty' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'difficulty' ? null : 'difficulty')} aria-expanded={setupActiveSection === 'difficulty'}><div className="panel-heading"><span className="step-number">01</span><div className="panel-heading-text"><h3>Choose difficulty</h3><p className="panel-heading-desc">More pairs means a bigger challenge.</p></div></div><div className="setup-panel-summary"><span className="summary-pill">{difficulty} · {difficulty === 'Easy' ? '4 × 3' : difficulty === 'Normal' ? '4 × 4' : difficulty === 'Medium' ? '6 × 4' : difficulty === 'Hard' ? '6 × 6' : '8 × 6'} · {settings.pairs * 2} cards · {settings.time / 60} min</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'difficulty' ? 'open' : ''}`}><div className="difficulty-list">{Object.entries(DIFFICULTIES).map(([name, value]) => <button key={name} className={difficulty === name ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => { setDifficulty(name); setSetupActiveSection(null); }}><span className="radio-dot" /><span className="difficulty-label"><strong>{name}</strong><small>{value.pairs * 2} cards ({value.pairs} pairs) · {value.time / 60} min</small></span><span className="difficulty-size">{name === 'Easy' ? '4 × 3' : name === 'Normal' ? '4 × 4' : name === 'Medium' ? '6 × 4' : name === 'Hard' ? '6 × 6' : '8 × 6'}</span></button>)}</div></div></div><div className={`setup-panel ${setupActiveSection === 'theme' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'theme' ? null : 'theme')} aria-expanded={setupActiveSection === 'theme'}><div className="panel-heading"><span className="step-number">02</span><div className="panel-heading-text"><h3>Choose a card theme</h3><p className="panel-heading-desc">Just a little personality.</p></div></div><div className="setup-panel-summary"><span className="summary-pill"><span className="pill-theme-preview" style={{ display: 'inline-flex', gap: '3px', marginRight: '6px', opacity: 0.85, verticalAlign: '-2px' }}>{theme === 'Random' ? <Sparkles size={13} /> : theme === 'Symbols' ? <><Circle size={12} /><Triangle size={12} /></> : theme === 'Space' ? <><Rocket size={12} /><Earth size={12} /></> : theme === 'Animals' ? <><Cat size={12} /><PawPrint size={12} /></> : theme === 'Tech' ? <><Laptop size={12} /><Gamepad2 size={12} /></> : <><Coffee size={12} /><Book size={12} /></>}</span>{theme}</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'theme' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'theme' ? 'open' : ''}`}><div className="theme-options"><button className={theme === 'Random' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('Random'); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}><Sparkles size={14} /></span><span>Random</span></button>{Object.keys(THEMES).map((name) => <button key={name} className={theme === name ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme(name); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>{name === 'Symbols' ? <><Circle size={14} /><Triangle size={14} /><Square size={14} /></> : name === 'Space' ? <><Rocket size={14} /><Earth size={14} /><Satellite size={14} /></> : name === 'Animals' ? <><Cat size={14} /><Dog size={14} /><PawPrint size={14} /></> : name === 'Tech' ? <><Laptop size={14} /><Gamepad2 size={14} /><Cpu size={14} /></> : <><Coffee size={14} /><Book size={14} /><Gift size={14} /></>}</span><span>{name}</span></button>)}</div></div></div><div className="setup-panel players-panel"><div className="panel-heading"><span className="step-number">03</span><div><h3>{mode === 'solo' ? 'Your player name' : 'Meet the players'}</h3>{mode === 'solo' && <p>Your name appears in your results.</p>}</div></div>{mode === 'solo' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Display name<input value={soloPlayerName} maxLength={20} onChange={(e) => setSoloPlayerName(e.target.value)} placeholder="Enter your name" style={{ borderColor: isSoloInvalid ? 'var(--danger)' : undefined }} /></label>{isSoloInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {soloValidationError}</span>}</div> : <><div className="player-count">{[2, 3, 4].map((n) => <button key={n} className={playerCount === n ? 'count-btn selected' : 'count-btn'} onClick={() => setPlayerCount(n)}>{n} players</button>)}</div><div className="player-fields">{selectedPlayers.map((name, i) => { const tName = name.trim(); const lower = tName.toLowerCase(); const isEmpty = tName === ''; const isDup = !isEmpty && lowerNames.filter(n => n === lower).length > 1; const nameVal = !isEmpty ? validatePlayerName(tName) : null; const isDisallowed = Boolean(nameVal && !nameVal.valid); const isInvalid = (setupSubmitted && isEmpty) || isDup || isDisallowed; const errorMessage = isEmpty ? 'Please enter a name for every active player.' : isDup ? 'Player names must be unique.' : nameVal?.error; return <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Player {i + 1}<input maxLength={20} value={name} onChange={(e) => setPlayerNames((old) => old.map((n, j) => j === i ? e.target.value : n))} placeholder={`Player ${i + 1}`} style={{ borderColor: isInvalid ? 'var(--danger)' : undefined }} /></label>{isInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {errorMessage}</span>}</div>; })}</div><label className="check-row"><input type="checkbox" checked={turnBased} onChange={(e) => setTurnBased(e.target.checked)} /><span><strong>Matching pair earns another turn</strong><small>Turn passes to the next player after a mismatch.</small></span></label></>}
+      {page === 'setup' && <section className="setup-wrap"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title"><span className="eyebrow">MAKE IT YOUR GAME</span><h1>{mode === 'solo' ? 'Solo challenge' : 'Play together'}</h1><p>{mode === 'solo' ? 'Pick a difficulty, choose a theme, and see how sharp your memory is.' : 'Add your players, pick a challenge, and pass the device around.'}</p></div><div className="setup-grid"><div className={`setup-panel ${setupActiveSection === 'difficulty' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'difficulty' ? null : 'difficulty')} aria-expanded={setupActiveSection === 'difficulty'}><div className="panel-heading"><span className="step-number">01</span><div className="panel-heading-text"><h3>Choose difficulty</h3><p className="panel-heading-desc">More pairs means a bigger challenge.</p></div></div><div className="setup-panel-summary"><span className="summary-pill">{difficulty} · {difficulty === 'Easy' ? '4 × 3' : difficulty === 'Normal' ? '4 × 4' : difficulty === 'Medium' ? '6 × 4' : difficulty === 'Hard' ? '6 × 6' : '8 × 6'} · {settings.pairs * 2} cards · {settings.time / 60} min</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'difficulty' ? 'open' : ''}`}><div className="difficulty-list">{Object.entries(DIFFICULTIES).map(([name, value]) => <button key={name} className={difficulty === name ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => { setDifficulty(name); setSetupActiveSection(null); }}><span className="radio-dot" /><span className="difficulty-label"><strong>{name}</strong><small>{value.pairs * 2} cards ({value.pairs} pairs) · {value.time / 60} min</small></span><span className="difficulty-size">{name === 'Easy' ? '4 × 3' : name === 'Normal' ? '4 × 4' : name === 'Medium' ? '6 × 4' : name === 'Hard' ? '6 × 6' : '8 × 6'}</span></button>)}</div></div></div><div className={`setup-panel ${setupActiveSection === 'theme' ? 'expanded' : 'collapsed'}`}><button type="button" className="setup-panel-header" onClick={() => setSetupActiveSection(prev => prev === 'theme' ? null : 'theme')} aria-expanded={setupActiveSection === 'theme'}><div className="panel-heading"><span className="step-number">02</span><div className="panel-heading-text"><h3>Choose a card theme</h3><p className="panel-heading-desc">Just a little personality.</p></div></div><div className="setup-panel-summary"><span className="summary-pill"><span className="pill-theme-preview" style={{ display: 'inline-flex', gap: '3px', marginRight: '6px', opacity: 0.85, verticalAlign: '-2px' }}>{theme === 'Random' ? <Sparkles size={13} /> : theme === 'Symbols' ? <><Circle size={12} /><Triangle size={12} /></> : theme === 'Space' ? <><Rocket size={12} /><Earth size={12} /></> : theme === 'Animals' ? <><Cat size={12} /><PawPrint size={12} /></> : theme === 'Tech' ? <><Laptop size={12} /><Gamepad2 size={12} /></> : <><Coffee size={12} /><Book size={12} /></>}</span>{theme}</span></div><span className="expand-chevron" aria-hidden="true"><ChevronDown size={18} style={{ transform: setupActiveSection === 'theme' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} /></span></button><div className={`setup-expandable-content ${setupActiveSection === 'theme' ? 'open' : ''}`}><div className="theme-options"><button className={theme === 'Random' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('Random'); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}><Sparkles size={14} /></span><span>Random</span></button>{Object.keys(THEMES).map((name) => <button key={name} className={theme === name ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme(name); setSetupActiveSection(null); }}><span style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>{name === 'Symbols' ? <><Circle size={14} /><Triangle size={14} /><Square size={14} /></> : name === 'Space' ? <><Rocket size={14} /><Earth size={14} /><Satellite size={14} /></> : name === 'Animals' ? <><Cat size={14} /><Dog size={14} /><PawPrint size={14} /></> : name === 'Tech' ? <><Laptop size={14} /><Gamepad2 size={14} /><Cpu size={14} /></> : <><Coffee size={14} /><Book size={14} /><Gift size={14} /></>}</span><span>{name}</span></button>)}</div></div></div><div className="setup-panel players-panel"><div className="panel-heading"><span className="step-number">03</span><div><h3>{mode === 'solo' ? 'Your player name' : 'Meet the players'}</h3><p>{mode === 'solo' ? 'Your name appears in your results.' : 'Assign local players and customize match display names.'}</p></div></div>{mode === 'solo' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label className="field-label">Match Display Name<input value={soloPlayerName} maxLength={20} onChange={(e) => setSoloPlayerName(e.target.value)} placeholder="Enter your name" style={{ borderColor: isSoloInvalid ? 'var(--danger)' : undefined }} /></label>{isSoloInvalid && <span style={{ color: 'var(--danger)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '-4px', marginBottom: '8px' }}><AlertCircle size={13} /> {soloValidationError}</span>}</div> : <><div className="player-count">{[2, 3, 4].map((n) => <button key={n} className={playerCount === n ? 'count-btn selected' : 'count-btn'} onClick={() => setPlayerCount(n)}>{n} players</button>)}</div><div className="player-fields">{Array.from({ length: playerCount }).map((_, i) => { const assignedId = slotPlayerIds[i] || ''; const assignedPlayer = (persisted.players || []).find((p) => p && p.id === assignedId); const rawDisp = playerNames[i] !== undefined ? playerNames[i] : (assignedPlayer ? assignedPlayer.name : ''); const tDisp = rawDisp.trim(); const nameVal = tDisp ? validatePlayerName(tDisp) : null; const isDispDisallowed = Boolean(nameVal && !nameVal.valid); const isDispEmpty = tDisp === ''; const isMissingPlayer = !assignedId; const isDupPlayer = Boolean(assignedId && slotPlayerIds.slice(0, playerCount).filter((id) => id === assignedId).length > 1); const isInvalid = (setupSubmitted && (isDispEmpty || isMissingPlayer)) || isDupPlayer || isDispDisallowed; const errorMessage = isMissingPlayer ? 'Please assign or register a player.' : isDupPlayer ? 'Each slot must have a different player.' : isDispEmpty ? 'Please enter a display name.' : nameVal?.error; return <div key={i} className="player-slot-card"><div className="slot-badge-row"><span className="slot-pill">Player {i + 1}</span>{assignedId === currentProfileId && <span className="profile-owner-pill">Main Profile</span>}</div><label className="field-label">Assigned Player<select className="player-select-dropdown" value={creatingSlotIndex === i ? '__new__' : assignedId} onChange={(e) => handleSlotPlayerChange(i, e.target.value)}><option value="" disabled>Select registered player...</option>{(persisted.players || []).map((p) => { const isUsedElsewhere = slotPlayerIds.slice(0, playerCount).some((id, idx) => idx !== i && id === p.id); return <option key={p.id} value={p.id} disabled={isUsedElsewhere}>{p.name} {p.id === currentProfileId ? '(Main)' : ''} {isUsedElsewhere ? '(Assigned elsewhere)' : ''}</option>; })}<option value="__new__">+ Register new player...</option></select></label>{creatingSlotIndex === i && <div className="new-player-inline-box"><label className="field-label">Register New Player<div className="new-player-input-row"><input type="text" maxLength={20} value={newPlayerName} onChange={(e) => { setNewPlayerName(e.target.value); if (newPlayerError) setNewPlayerError(''); }} placeholder="Player name" autoFocus /><button type="button" className="btn primary small-btn" onClick={() => handleRegisterNewPlayer(i)}>Add</button><button type="button" className="btn secondary small-btn" onClick={() => { setCreatingSlotIndex(null); setNewPlayerError(''); }}>Cancel</button></div></label>{newPlayerError && <span className="slot-error-msg"><AlertCircle size={13} /> {newPlayerError}</span>}</div>}<label className="field-label">Match Display Name<input maxLength={20} value={rawDisp} onChange={(e) => { const val = e.target.value; setPlayerNames((old) => { const next = [...old]; next[i] = val; return next; }); }} placeholder={assignedPlayer ? assignedPlayer.name : `Player ${i + 1}`} style={{ borderColor: isInvalid ? 'var(--danger)' : undefined }} /></label>{isInvalid && <span className="slot-error-msg"><AlertCircle size={13} /> {errorMessage}</span>}</div>; })}</div><label className="check-row"><input type="checkbox" checked={turnBased} onChange={(e) => setTurnBased(e.target.checked)} /><span><strong>Matching pair earns another turn</strong><small>Turn passes to the next player after a mismatch.</small></span></label></>}
         <div className="setup-summary">
           {mode === 'solo' ? (
             <>
@@ -1564,124 +1876,16 @@ export default function App() {
         ));
       })()}</div> : <div className="empty-state"><span className="empty-icon"><Users size={24} /></span><h3>No matches yet</h3><p>Complete a multiplayer match and your results will show up here.</p><button className="btn primary" onClick={() => nav('setup')}>Start a game</button></div>}<div className="leaderboard-note"><Info size={15} /><p>Your game history is stored locally in this browser.</p></div></div></section>}
       {page === 'profile' && (() => {
-        const playerNameTrimmed = (profileName || '').trim();
-        
-        // Ownership verification: profileId match takes precedence; legacy fallback requires exact name match
-        const isCurrentProfileRecord = (r) => {
-          if (!r) return false;
-          if (r.profileId) return r.profileId === currentProfileId;
-          if (r.isProfileOwner === true) return true;
-          const rName = (r.name || 'Player').trim();
-          return Boolean(playerNameTrimmed && rName.toLowerCase() === playerNameTrimmed.toLowerCase());
-        };
-
-        const completedSoloGames = (persisted.history || []).filter(r => {
-          if (!r || r.mode !== 'solo') return false;
-          if (!isCurrentProfileRecord(r)) return false;
-          const diffConfig = DIFFICULTIES[r.difficulty];
-          if (!diffConfig) return false;
-          const targetPairs = diffConfig.pairs;
-          if (typeof r.completedPairs === 'number') {
-            return r.completedPairs >= targetPairs && (typeof r.moves === 'number' ? r.moves >= targetPairs : true);
-          }
-          return typeof r.moves === 'number' && r.moves >= targetPairs && (r.score > 0);
-        });
-
-        const bestScoreRecord = completedSoloGames.length
-          ? [...completedSoloGames].sort((a, b) => {
-              if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
-              return (a.seconds || Infinity) - (b.seconds || Infinity);
-            })[0]
-          : null;
-
-        const validTimeGames = completedSoloGames.filter(r => typeof r.seconds === 'number' && r.seconds > 0);
-        const fastestRecord = validTimeGames.length
-          ? [...validTimeGames].sort((a, b) => {
-              if (a.seconds !== b.seconds) return a.seconds - b.seconds;
-              return (b.score || 0) - (a.score || 0);
-            })[0]
-          : null;
-
-        const validMovesGames = completedSoloGames.filter(r => {
-          const minPairs = DIFFICULTIES[r.difficulty]?.pairs || 1;
-          return typeof r.moves === 'number' && r.moves >= minPairs;
-        });
-        const fewestMovesRecord = validMovesGames.length
-          ? [...validMovesGames].sort((a, b) => {
-              if (a.moves !== b.moves) return a.moves - b.moves;
-              return (a.seconds || Infinity) - (b.seconds || Infinity);
-            })[0]
-          : null;
-
-        // Overall progress statistics computed from authoritative completed match records for the current profile player only
-        const seenProfileMatches = new Set();
-        let totalGamesPlayed = 0;
-        let totalPairsMatched = 0;
-        let totalOverallScore = 0;
-
-        (persisted.history || []).forEach(r => {
-          if (!r) return;
-          if (!isCurrentProfileRecord(r)) return;
-
-          const isSolo = r.mode === 'solo';
-          const isMulti = r.mode === 'local' || r.mode === 'multiplayer';
-          if (!isSolo && !isMulti) return;
-
-          const diffConfig = DIFFICULTIES[r.difficulty];
-          const expectedPairs = diffConfig?.pairs;
-          if (expectedPairs == null) return;
-
-          if (isSolo) {
-            // Validate completed solo game
-            const isCompleted = typeof r.completedPairs === 'number'
-              ? r.completedPairs >= expectedPairs
-              : (typeof r.moves === 'number' && r.moves >= expectedPairs && (r.score > 0));
-            if (!isCompleted) return;
-
-            const matchKey = `solo-${r.id || r.sessionId || `${r.date}-${r.score}`}`;
-            if (seenProfileMatches.has(matchKey)) return;
-            seenProfileMatches.add(matchKey);
-
-            totalGamesPlayed += 1;
-            totalPairsMatched += (typeof r.completedPairs === 'number' ? r.completedPairs : expectedPairs);
-            const scoreNum = Number(r.score);
-            if (Number.isFinite(scoreNum)) totalOverallScore += scoreNum;
-          } else {
-            // Validate completed multiplayer record for this player
-            if (typeof r.completedPairs !== 'number' && typeof r.score !== 'number') return;
-            const matchKey = `multi-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}-${r.profileId || (r.name || '').trim().toLowerCase()}`;
-            
-            // Increment match count only once per multiplayer match for this player
-            if (seenProfileMatches.has(matchKey)) return;
-            seenProfileMatches.add(matchKey);
-
-            totalGamesPlayed += 1;
-            if (typeof r.completedPairs === 'number' && r.completedPairs > 0) {
-              totalPairsMatched += r.completedPairs;
-            }
-            const scoreNum = Number(r.score);
-            if (Number.isFinite(scoreNum) && scoreNum > 0) {
-              totalOverallScore += scoreNum;
-            }
-          }
-        });
-
-        // Compute multiplayer wins for the current profile
-        const seenWinMatches = new Set();
-        let historyMultiWins = 0;
-        (persisted.history || []).forEach(r => {
-          if (!r || (r.mode !== 'local' && r.mode !== 'multiplayer')) return;
-          if (!isCurrentProfileRecord(r)) return;
-          if (r.matchResult === 'winner') {
-            const matchKey = `win-${r.sessionId || (r.id ? r.id.split('-').slice(0, -1).join('-') : null) || r.date}`;
-            if (!seenWinMatches.has(matchKey)) {
-              seenWinMatches.add(matchKey);
-              historyMultiWins += 1;
-            }
-          }
-        });
-        const legacyMultiWins = playerNameTrimmed ? (persisted.multiplayerWins?.[playerNameTrimmed] || 0) : 0;
-        const playerMultiWins = Math.max(historyMultiWins, persisted.profileMultiWins || 0, legacyMultiWins);
+        const stats = calculatePlayerStats(persisted.history, currentProfileId, persisted);
+        const {
+          gamesPlayed: totalGamesPlayed,
+          pairsMatched: totalPairsMatched,
+          overallScore: totalOverallScore,
+          multiplayerWins: playerMultiWins,
+          bestScoreRecord,
+          fastestRecord,
+          fewestMovesRecord
+        } = stats;
 
         return (
           <section className="content-page focus-page">
@@ -1730,7 +1934,10 @@ export default function App() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       const trimmed = editNameInput.trim();
-                      const validation = validatePlayerName(trimmed);
+                      const validation = validatePlayerName(trimmed, {
+                        existingPlayers: persisted.players || [],
+                        currentPlayerId: currentProfileId
+                      });
                       if (!validation.valid) {
                         setProfileNameError(validation.error);
                         return;
@@ -1738,7 +1945,25 @@ export default function App() {
                       setProfileNameError('');
                       const finalName = trimmed;
                       setProfileName(finalName);
-                      setPersisted(prev => ({ ...prev, displayName: finalName }));
+                      const updatedPlayers = (persisted.players || []).map((p) => {
+                        if (p && p.id === currentProfileId) {
+                          return { ...p, name: finalName };
+                        }
+                        return p;
+                      });
+                      const updated = {
+                        ...persisted,
+                        displayName: finalName,
+                        players: updatedPlayers
+                      };
+                      setPersisted(updated);
+                      saveStore({
+                        ...updated,
+                        dark,
+                        sound,
+                        displayName: finalName,
+                        players: updatedPlayers
+                      });
                       setIsEditingName(false);
                       toast('Profile name updated.');
                     }}
@@ -1965,6 +2190,7 @@ export default function App() {
                       const clean = {
                         profileId: currentProfileId,
                         displayName: profileName,
+                        players: persisted.players || [{ id: currentProfileId, name: profileName, isDefaultProfile: true, createdAt: new Date().toISOString() }],
                         lastSoloName: soloPlayerName
                       };
                       setPersisted(clean);

@@ -1247,8 +1247,106 @@ button:disabled {
 .player-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0 10px
+    gap: 12px;
 }
+
+.player-slot-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.player-slot-card:hover {
+    border-color: rgba(104, 87, 217, 0.35);
+}
+
+.slot-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.slot-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    letter-spacing: 0.02em;
+}
+
+.profile-owner-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid rgba(104, 87, 217, 0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.player-select-dropdown {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 11px 12px;
+    font-size: 13px;
+    outline: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.player-select-dropdown:focus {
+    border-color: var(--accent);
+}
+
+.new-player-inline-box {
+    background: var(--surface-2);
+    border: 1px dashed var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+}
+
+.new-player-input-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.new-player-input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.slot-error-msg {
+    color: var(--danger);
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: -6px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
 
 .check-row {
     display: flex;
