@@ -2210,7 +2210,7 @@ button:disabled {
 
 .profile-sections-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
 }
 
@@ -2295,100 +2295,6 @@ button:disabled {
     font-variant-numeric: tabular-nums;
     text-align: right;
     white-space: nowrap;
-}
-
-.activity-list {
-    display: flex;
-    flex-direction: column;
-}
-
-.activity-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 11px 0;
-    border-bottom: 1px solid var(--line);
-    gap: 12px;
-}
-
-.activity-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.activity-primary {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.activity-mode {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.activity-date {
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
-}
-
-.activity-secondary {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-    justify-content: flex-end;
-    text-align: right;
-}
-
-.activity-score {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-.activity-time {
-    font-size: 12px;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-.activity-result {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-
-.activity-result.winner {
-    background: var(--green-soft);
-    color: var(--green);
-}
-
-.activity-result.tie {
-    background: var(--surface-2);
-    color: var(--muted);
-}
-
-.activity-result.loser {
-    background: var(--surface-2);
-    color: var(--muted);
-}
-
-.profile-empty-state {
-    padding: 24px 0;
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
 }
 
 .settings-container {

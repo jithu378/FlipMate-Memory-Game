@@ -1172,9 +1172,6 @@ export default function App() {
             })[0]
           : null;
 
-        // Recent activity: top 3 most recent games from history
-        const recentGames = (persisted.history || []).slice(0, 3);
-
         return (
           <section className="content-page focus-page">
             <button className="back-link" onClick={() => nav('home')}>
@@ -1183,7 +1180,7 @@ export default function App() {
             <div className="page-title">
               <span className="eyebrow">YOUR PROGRESS</span>
               <h1>Player profile</h1>
-              <p>Your stats, records, and activity on this device.</p>
+              <p>Your stats and personal records on this device.</p>
             </div>
 
             <div className="profile-dashboard">
@@ -1277,9 +1274,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Personal Records & Recent Activity side-by-side on desktop */}
+              {/* Personal Records */}
               <div className="profile-sections-grid">
-                {/* Personal Records */}
                 <div className="profile-panel">
                   <div className="profile-panel-head">
                     <Trophy size={16} className="panel-icon" />
@@ -1322,50 +1318,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Recent Activity */}
-                <div className="profile-panel">
-                  <div className="profile-panel-head">
-                    <Clock3 size={16} className="panel-icon" />
-                    <h3>Recent Activity</h3>
-                  </div>
-                  {recentGames.length ? (
-                    <div className="activity-list">
-                      {recentGames.map((game, idx) => {
-                        const isSolo = game.mode === 'solo';
-                        return (
-                          <div key={game.id || idx} className="activity-row">
-                            <div className="activity-primary">
-                              <span className="activity-mode">
-                                {isSolo ? 'Solo' : 'Multiplayer'}
-                                {game.difficulty ? ` · ${game.difficulty}` : ''}
-                              </span>
-                              <span className="activity-date">
-                                {game.date ? new Date(game.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent'}
-                              </span>
-                            </div>
-                            <div className="activity-secondary">
-                              <span className="activity-score">
-                                {typeof game.score === 'number' ? `${game.score.toLocaleString()} pts` : '—'}
-                              </span>
-                              <span className="activity-time">
-                                {game.seconds ? formatTime(game.seconds) : '—'}
-                              </span>
-                              {!isSolo && game.matchResult && (
-                                <span className={`activity-result ${game.matchResult}`}>
-                                  {game.matchResult === 'winner' ? 'Win' : game.matchResult === 'tie' ? 'Tie' : 'Loss'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="profile-empty-state">
-                      <p>No games played yet. Finish a match to see your activity here.</p>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </section>
