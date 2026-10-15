@@ -1,4 +1,6 @@
-# MindFlip by JB Devs
+# FlipMate by JB Devs
+
+**Flip. Match. Win.**
 
 A clean, responsive memory card game starter built with React + Vite. The first version includes working solo play, local multiplayer for 2–4 players, difficulty selection, card themes, local stats, settings, and local score history.
 

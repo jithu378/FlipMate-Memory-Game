@@ -47,7 +47,7 @@ const THEMES = {
   Everyday: [Coffee, Book, Pencil, Scissors, Ticket, Gift, Trophy, Medal, Plane, Car, Bus, Train, Bike, Compass, Map, Briefcase, ShoppingCart, CreditCard, Glasses, Key, Lock, Mail, Phone, Video],
   Animals: [Cat, Dog, PawPrint, Bird, Fish, Rabbit, Snail, Turtle, Rat, Worm, Squirrel, Bug, Shell, LionIcon, PandaIcon, ElephantIcon, FoxIcon, BearIcon, FrogIcon, OwlIcon, WhaleIcon, ButterflyIcon, BeeIcon, PenguinIcon]
 };
-const STORE = 'mindflip-v1';
+const STORE = 'flipmate-v1';
 const createGameId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const PROFILE_HISTORY_OWNER_MIGRATION = 1;
 const migrateProfileHistory = (data) => {
@@ -410,7 +410,7 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     if (import.meta.env.DEV) {
-      console.error('MindFlip caught a rendering error:', error, errorInfo);
+      console.error('FlipMate caught a rendering error:', error, errorInfo);
     }
   }
 
@@ -434,7 +434,7 @@ export class ErrorBoundary extends React.Component {
               </div>
               <span className="eyebrow">A LITTLE MIX-UP</span>
               <h1>Something went wrong</h1>
-              <p>MindFlip hit an unexpected snag. Your saved game data is still safe.</p>
+              <p>FlipMate hit an unexpected snag. Your saved game data is still safe.</p>
               <div className="error-actions">
                 <button className="btn primary" onClick={() => this.setState({ hasError: false })}>
                   <RotateCcw size={16} /> Try Again
@@ -785,7 +785,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = 'MindFlip — by JB Devs';
+    document.title = 'FlipMate — by JB Devs';
     const handlePopState = () => {
       const targetPage = getPageFromPath(window.location.pathname);
       setPage(targetPage);
@@ -1404,7 +1404,7 @@ export default function App() {
                 <Brain size={36} strokeWidth={2.2} />
               </div>
               <span className="eyebrow">GET STARTED</span>
-              <h1 id="welcome-title">Welcome to MindFlip!</h1>
+              <h1 id="welcome-title">Welcome to FlipMate!</h1>
               <p className="welcome-message">Let's get to know you.</p>
 
               <form className="welcome-form" onSubmit={handleWelcomeSubmit}>
@@ -1446,7 +1446,7 @@ export default function App() {
 
   return <div className={`${dark ? 'app dark' : 'app'} ${isGameplayActive ? 'immersive-mode' : ''}`}>
     {!isGameFlow && page !== 'not_found' && <header className="topbar" ref={headerRef}>
-      <button className="brand" onClick={() => nav('home')} aria-label="MindFlip home"><span className="brand-mark"><img src="/logo.png" alt="MindFlip logo" /></span><span><strong>MindFlip</strong><small>by JB Devs</small></span></button>
+      <button className="brand" onClick={() => nav('home')} aria-label="FlipMate home"><span className="brand-mark"><img src="/logo.png" alt="FlipMate logo" /></span><span><strong>FlipMate</strong><small>by JB Devs</small></span></button>
       <nav id="main-navigation" className={`main-nav${mobileMenuOpen ? ' mobile-open' : ''}`} aria-label="Main navigation">
         <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('home'); setMobileMenuOpen(false); }}><House size={16} /> Home</button>
         <button className={page === 'leaderboard' ? 'nav-link active' : 'nav-link'} onClick={() => { nav('leaderboard'); setMobileMenuOpen(false); }}><Trophy size={16} /> Leaderboard</button>
@@ -1953,7 +1953,7 @@ export default function App() {
                         </button>
                       )}
                     </div>
-                    <p className="profile-subtitle">MindFlip Player</p>
+                    <p className="profile-subtitle">FlipMate Player</p>
                   </div>
                 </div>
 
@@ -2159,7 +2159,7 @@ export default function App() {
             </div>
             <div className="settings-foot">
               <Info size={14} />
-              <p>MindFlip stores records locally. Online rooms and cross-device sync will be enabled once backend integration is connected.</p>
+              <p>FlipMate stores records locally. Online rooms and cross-device sync will be enabled once backend integration is connected.</p>
             </div>
           </div>
         </div>
@@ -2226,7 +2226,7 @@ export default function App() {
         </section>
       )}
 
-      {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title" style={{ textAlign: 'center', margin: '40px 0 20px' }}><span className="local-badge" style={{ display: 'inline-block', marginBottom: '16px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Sparkles size={14} /> COMING SOON</span><h1 style={{ marginBottom: '12px' }}>Online Multiplayer</h1><p style={{ maxWidth: '400px', margin: '0 auto', fontSize: '15px' }}>Play MindFlip with friends, wherever they are.</p></div><div className="settings-card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Globe2 size={32} /></div><p style={{ color: 'var(--muted)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '400px', margin: '0 auto' }}>We're working on online multiplayer, including private rooms, friend invitations, and real-time matches. Stay tuned for updates.</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', textAlign: 'left', marginBottom: '32px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Lock size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Private Rooms</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Users size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Invite Friends</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Zap size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Real-Time Matches</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Trophy size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Online Leaderboards</span></div></div><button className="btn primary" onClick={() => nav('home')} style={{ padding: '0 32px' }}>Back to Home</button></div></section>}
+      {page === 'online' && <section className="content-page"><button className="back-link" onClick={() => nav('home')}><ArrowLeft size={16} /> Back home</button><div className="page-title" style={{ textAlign: 'center', margin: '40px 0 20px' }}><span className="local-badge" style={{ display: 'inline-block', marginBottom: '16px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}><Sparkles size={14} /> COMING SOON</span><h1 style={{ marginBottom: '12px' }}>Online Multiplayer</h1><p style={{ maxWidth: '400px', margin: '0 auto', fontSize: '15px' }}>Play FlipMate with friends, wherever they are.</p></div><div className="settings-card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}><div className="mode-icon peach" style={{ width: '60px', height: '60px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Globe2 size={32} /></div><p style={{ color: 'var(--muted)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '400px', margin: '0 auto' }}>We're working on online multiplayer, including private rooms, friend invitations, and real-time matches. Stay tuned for updates.</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', textAlign: 'left', marginBottom: '32px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Lock size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Private Rooms</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Users size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Invite Friends</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Zap size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Real-Time Matches</span></div><div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--line)' }}><Trophy size={18} style={{ color: 'var(--text)' }} /><span style={{ fontSize: '13px', fontWeight: 500 }}>Online Leaderboards</span></div></div><button className="btn primary" onClick={() => nav('home')} style={{ padding: '0 32px' }}>Back to Home</button></div></section>}
       {page === 'how_to_play' && (
         <section className="content-page">
           <button className="back-link" onClick={() => nav('home')}>
@@ -2236,7 +2236,7 @@ export default function App() {
           {/* 1. HERO */}
           <div className="page-title">
             <span className="eyebrow">OFFICIAL MANUAL</span>
-            <h1>MindFlip Game Guide</h1>
+            <h1>FlipMate Game Guide</h1>
             <p>Everything you need to sharpen your memory and master the game.</p>
           </div>
 
@@ -2365,7 +2365,7 @@ export default function App() {
             <div className="guide-two-col">
               <div className="guide-card-panel">
                 <h3><Target size={18} style={{ color: 'var(--accent)' }} /> Scoring and Accuracy</h3>
-                <p>MindFlip rewards both speed and disciplined memory recall:</p>
+                <p>FlipMate rewards both speed and disciplined memory recall:</p>
                 <ul className="guide-panel-list">
                   <li><strong>Move:</strong> One attempt turning over two cards counts as exactly one move.</li>
                   <li><strong>Formula:</strong> Points scale with matched pairs and difficulty multiplier, with deductions for extra moves and elapsed seconds: <code>(Pairs × 100 × Multiplier) - (Moves × 5) - Seconds</code>.</li>
@@ -2396,7 +2396,7 @@ export default function App() {
             <div className="guide-two-col">
               <div className="guide-card-panel">
                 <h3><ShieldCheck size={18} style={{ color: 'var(--accent)' }} /> Respectful Player Names</h3>
-                <p>MindFlip maintains a family-friendly, welcoming environment for everyone:</p>
+                <p>FlipMate maintains a family-friendly, welcoming environment for everyone:</p>
                 <ul className="guide-panel-list">
                   <li><strong>Prohibited Terms:</strong> Offensive, abusive, vulgar, or insulting terms are strictly disallowed in both profile and in-game names.</li>
                   <li><strong>Reserved Identities:</strong> Developer and brand identities (such as <strong>JB Devs</strong>) are protected against impersonation.</li>
@@ -2517,8 +2517,8 @@ export default function App() {
           </div>
 
           <div className="section-block about-card">
-            <h3 className="about-card-title"><Brain size={18} /> Why MindFlip?</h3>
-            <p className="about-card-copy">MindFlip is a memory-matching game built to explore interactive web development, game logic, responsive UI design, and browser-based data storage. Building it has helped me practise React, state management, and creating a more complete user experience.</p>
+            <h3 className="about-card-title"><Brain size={18} /> Why FlipMate?</h3>
+            <p className="about-card-copy">FlipMate is a memory-matching game built to explore interactive web development, game logic, responsive UI design, and browser-based data storage. Building it has helped me practise React, state management, and creating a more complete user experience.</p>
           </div>
 
           <div className="section-block about-card">
@@ -2545,11 +2545,11 @@ export default function App() {
       <div className="footer-content">
         <div className="footer-brand-area">
           <div className="footer-brand" style={{ marginBottom: '12px' }}>
-            <span className="brand-mark small"><img src="/logo.png" alt="MindFlip logo" /></span>
-            <span><strong>MindFlip</strong></span>
+            <span className="brand-mark small"><img src="/logo.png" alt="FlipMate logo" /></span>
+            <span><strong>FlipMate</strong></span>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: '1.5', maxWidth: '250px', margin: 0 }}>
-            Flip cards, match pairs, and challenge your memory.
+            Flip. Match. Win.
           </p>
         </div>
         <div className="footer-links-area">
@@ -2572,7 +2572,7 @@ export default function App() {
       </div>
       <div className="footer-bottom">
         <span style={{ fontSize: '12px', color: 'var(--muted)' }}>© {new Date().getFullYear()} JB Devs. All rights reserved.</span>
-        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>MindFlip v1.2.0</span>
+        <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>FlipMate v1.3.0</span>
       </div>
     </footer>}
     {notice && <div className="toast" role="status"><Check size={16} />{notice}</div>}
