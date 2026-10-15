@@ -398,7 +398,8 @@ const VALID_ROUTES = new Set(['home', 'setup', 'game', 'leaderboard', 'history',
 const getPageFromPath = (pathname) => {
   const path = pathname.split('/').filter(Boolean).join('/');
   if (!path) return 'home';
-  return VALID_ROUTES.has(path) ? path.replaceAll('-', '_') : 'not_found';
+  const normalizedPath = path.replaceAll('_', '-');
+  return VALID_ROUTES.has(normalizedPath) ? normalizedPath.replaceAll('-', '_') : 'not_found';
 };
 
 export class ErrorBoundary extends React.Component {
@@ -1364,7 +1365,7 @@ export default function App() {
     setNotice('');
     setHistoryMenuOpen(false);
     setMobileMenuOpen(false);
-    let path = next === 'home' ? '/' : `/${next.replace('_', '-')}`;
+    let path = next === 'home' ? '/' : `/${next.replaceAll('_', '-')}`;
     if (next === 'leaderboard' && options.mode) {
       const searchParams = new URLSearchParams();
       searchParams.set('tab', options.mode);
