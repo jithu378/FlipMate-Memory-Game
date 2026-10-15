@@ -1613,12 +1613,6 @@ export default function App() {
           {leaderboardMode === 'multiplayer' && <div className="leaderboard-filters" style={{ display: 'flex', gap: '12px', padding: '14px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--line)', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', gap: '8px' }}><button className={`count-btn ${multiplayerView === 'top_players' ? 'selected' : ''}`} onClick={() => setMultiplayerView('top_players')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Trophy size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Top Players</button><button className={`count-btn ${multiplayerView === 'recent_matches' ? 'selected' : ''}`} onClick={() => setMultiplayerView('recent_matches')} style={{ padding: '6px 14px', fontSize: '11px', flex: '0 0 auto', width: 'auto' }}><Users size={13} style={{ marginRight: '5px', verticalAlign: '-2px' }} />Recent Matches</button></div><span style={{ fontSize: '12px', color: 'var(--muted)' }}>{multiplayerView === 'top_players' ? `${multiTopPlayers.length} ranked player${multiTopPlayers.length === 1 ? '' : 's'}` : `${multiMatches.length} completed match${multiMatches.length === 1 ? '' : 'es'}`}</span></div>}
           {leaderboardMode === 'overall' && (
             <>
-              <div className="overall-stats">
-                <div className="overall-stat"><small>Total Score</small><strong>{overallStats.totalScore.toLocaleString()}</strong></div>
-                <div className="overall-stat"><small>Games Played</small><strong>{overallStats.gamesPlayed.toLocaleString()}</strong></div>
-                <div className="overall-stat"><small>Total Pairs Matched</small><strong>{overallStats.pairsMatched.toLocaleString()}</strong></div>
-                <div className="overall-stat"><small>Multiplayer Wins</small><strong>{overallStats.multiplayerWins.toLocaleString()}</strong></div>
-              </div>
               <div className="overall-section-heading"><Trophy size={16} /><h2>Top Players</h2><span>{overallTopPlayers.length} ranked entries</span></div>
               {overallTopPlayers.length ? (
                 <div className="leaderboard-list overall-leaderboard-list">

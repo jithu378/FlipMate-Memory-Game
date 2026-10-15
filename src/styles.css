@@ -4824,36 +4824,6 @@ button:disabled {
     font-size: 11px;
 }
 
-.overall-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    padding: 16px 20px 8px;
-}
-
-.overall-stat {
-    min-width: 0;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--surface);
-}
-
-.overall-stat small {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--muted);
-    font-size: 11px;
-}
-
-.overall-stat strong {
-    color: var(--text);
-    font-family: Manrope, sans-serif;
-    font-size: 19px;
-    letter-spacing: -0.4px;
-    overflow-wrap: anywhere;
-}
-
 .overall-section-heading {
     display: flex;
     align-items: center;
@@ -4901,11 +4871,6 @@ button:disabled {
 }
 
 @media (max-width: 680px) {
-    .overall-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        padding: 12px 12px 4px;
-    }
-
     .overall-section-heading {
         padding-right: 12px;
         padding-left: 12px;
