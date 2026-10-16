@@ -5507,3 +5507,65 @@ button:disabled {
         font-size: 24px;
     }
 }
+
+/* History page: compact difficulty dropdown + mobile-fitting table */
+.history-filter-controls select {
+    min-width: 0;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+@media (max-width: 620px) {
+    .leaderboard-filters > .history-filter-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+    }
+
+    .history-filter-controls .history-difficulty-select {
+        grid-column: 1 / -1;
+    }
+
+    .history-filter-controls select {
+        width: 100%;
+        flex: none;
+        min-height: 36px;
+    }
+
+    .leader-row.history-row {
+        min-width: 0;
+        grid-template-columns: 24px minmax(0, 1fr) 48px 38px 30px 44px;
+        gap: 4px;
+        padding: 8px 0;
+        font-size: 10px;
+    }
+
+    .leader-row.history-row .history-col-diff,
+    .leader-row.history-row .history-col-acc {
+        display: none;
+    }
+
+    .leader-row.history-row .rank {
+        padding-left: 0;
+    }
+
+    .leader-row.history-row .leader-player {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .leader-row.history-row .leader-player .player-avatar {
+        display: inline-flex;
+        vertical-align: middle;
+        margin-right: 5px;
+    }
+}
+
+@media (max-width: 380px) {
+    .leader-row.history-row .leader-player .player-avatar {
+        display: none;
+    }
+}
