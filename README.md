@@ -1,72 +1,76 @@
-# FlipMate by JB Devs
+# FlipMate — Flip. Match. Win.
 
-**Flip. Match. Win.**
+FlipMate is a responsive memory card game built with React and Vite. Flip cards, find matching pairs, and beat your best time. Play solo or take turns with friends on the same device.
 
-A clean, responsive memory card game starter built with React + Vite. The first version includes working solo play, local multiplayer for 2–4 players, difficulty selection, card themes, local stats, settings, and local score history.
+**Live demo:** https://flipmate-memory-game.vercel.app/
 
-> **Important:** Online room codes, cross-device multiplayer, authentication, and a global leaderboard are not connected yet. The online page currently contains a clearly labelled UI/demo flow. A real shared backend requires a configured Supabase project and server-side game validation; do not present the demo room as a real online room.
+> **Online multiplayer is planned, not implemented.** The app shows an "Online Multiplayer — Coming Soon" page, but there are no online rooms, accounts, or cross-device play yet. All current gameplay and data are local to your browser.
 
-## Requirements
+## Features
 
-- Node.js 20.19+ or 22.12+ recommended
-- npm
+- **Solo mode** with timer, move counter, one hint per round, pause, and restart.
+- **Local multiplayer** for 2, 3, or 4 players, taking turns on the same device.
+- **Five difficulty levels:** Easy (6 pairs), Normal (8), Medium (12), Hard (18), Extreme (24).
+- **Card themes:** Symbols, Space, Tech, Everyday, Animals, and a Random option.
+- **Leaderboard** with solo, multiplayer, and overall views, built from results saved on your device.
+- **Game history** for solo and multiplayer matches.
+- **Profile** with a display name and personal stats calculated from your local history.
+- **Settings:** light/dark mode and a sound toggle.
+- **How to Play** and **About Developer** pages.
 
-## Run locally
+> Leaderboard, history, and profile data are stored in the browser's `localStorage`. They are not synced across devices or browsers, and there is no global leaderboard.
+
+## Planned
+
+- Online multiplayer (private rooms, inviting friends, real-time matches, online leaderboards). This is in development and has no release date.
+- The repository includes an unused [`supabase/`](supabase/) folder and a placeholder [`.env.example`](.env.example) reserved for this future work. The current app does not use Supabase.
+
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| UI | [React](https://react.dev/) |
+| Build tool / dev server | [Vite](https://vite.dev/) with `@vitejs/plugin-react` |
+| Icons | [lucide-react](https://lucide.dev/) |
+| Analytics | `@vercel/analytics` |
+| Styling | Plain CSS (`src/styles.css`, `src/responsive.css`) |
+| Persistence | Browser `localStorage` |
+| Hosting | Vercel (see `vercel.json`) |
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 20.19+ or 22.12+
+- npm (included with Node.js)
+
+## Getting Started
 
 ```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd FlipMate
+
+# 2. Install dependencies
 npm install
+
+# 3. Start the development server
 npm run dev
 ```
 
-Open the local URL printed by Vite.
+Open the local URL printed in the terminal (Vite's default is http://localhost:5173).
 
-## Production build
+## Scripts
 
-```bash
-npm run build
-npm run preview
-```
+| Command | Description |
+| --- | --- |
+| `npm install` | Install dependencies |
+| `npm run dev` | Start the development server |
+| `npm run build` | Create a production build in `dist/` |
+| `npm run preview` | Preview the production build locally |
 
-The production output is created in `dist/`.
+No environment variables are needed to run the game locally.
 
-## Deploy to Vercel
+## Developer
 
-1. Create a GitHub repository and push this project.
-2. Import the repository in Vercel.
-3. Framework preset: Vite.
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
-6. Deploy. The local game does not require environment variables.
+Built by **Jithu Biju** (JB Devs).
 
-## Features in this starter
-
-- Solo game mode.
-- Local turn-based multiplayer for 2, 3, or 4 players on the same device.
-- Easy, Normal, Medium, Hard, and Extreme board sizes.
-- Symbols, Nature, Tech, and Everyday card themes.
-- Timer, move counter, matched-pair tracking, hint, pause, and restart.
-- Local player name, local game history, personal best, and stats via `localStorage`.
-- Light/dark theme and sound-effect toggle.
-- Responsive layout and reduced-motion support.
-- Online multiplayer setup screen clearly marked as a demo until a backend is connected.
-
-## Online multiplayer implementation plan
-
-To make cross-device rooms and a global leaderboard real:
-
-1. Create a Supabase project.
-2. Implement Supabase Auth and a profiles table.
-3. Create protected room and participant tables.
-4. Use trusted server-side functions to validate moves and update game state; do not accept arbitrary client score submissions.
-5. Use Supabase Realtime to distribute validated room updates.
-6. Implement RLS policies and test them with unauthorized users.
-7. Store only validated completed results for global rankings.
-8. Configure the Vercel environment variables shown in `.env.example`.
-
-The `.env.example` is a placeholder for future integration; this starter does not import or call Supabase yet. Never put service-role or secret keys in frontend environment variables.
-
-## Notes
-
-- Local results are saved in the current browser only and do not sync across devices.
-- The score formula is a starter formula and can be tuned after playtesting.
-- Free-tier quotas and inactivity rules can change; verify provider documentation before relying on free hosting long-term.
+Portfolio: https://jithu-portfolio-alpha.vercel.app/
